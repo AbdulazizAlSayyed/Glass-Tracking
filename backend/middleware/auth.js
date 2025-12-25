@@ -7,9 +7,9 @@ function authRequired(req, res, next) {
   if (!token) return res.status(401).json({ ok: false, error: "Unauthorized" });
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET) || {};
+    const secret = process.env.JWT_SECRET || "dev-secret";
+    const payload = jwt.verify(token, secret) || {};
 
-    // ✅ normalize userId (support many token payload shapes)
     const userId =
       payload.userId ??
       payload.id ??

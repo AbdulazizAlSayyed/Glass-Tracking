@@ -1,4 +1,3 @@
-// backend/routes/auth.js
 const router = require("express").Router();
 const pool = require("../db");
 const bcrypt = require("bcryptjs");
@@ -23,7 +22,8 @@ router.post("/login", async (req, res, next) => {
         password_hash,
         role,
         is_active,
-        home_page
+        home_page,
+        station_id
       FROM users
       WHERE username = ?
       LIMIT 1
@@ -48,18 +48,17 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ ok: false, error: "Invalid credentials" });
     }
 
-    // 👇 sign JWT (same secret as your authRequired)
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
         role: user.role,
+        stationId: user.station_id || null,
       },
       process.env.JWT_SECRET || "dev-secret",
       { expiresIn: "7d" }
     );
 
-    // 👇 this object goes to localStorage as "user"
     res.json({
       ok: true,
       token,
@@ -67,7 +66,8 @@ router.post("/login", async (req, res, next) => {
         id: user.id,
         username: user.username,
         role: user.role,
-        homePage: user.home_page, // ⭐ important
+        homePage: user.home_page,
+        stationId: user.station_id || null,
       },
     });
   } catch (e) {

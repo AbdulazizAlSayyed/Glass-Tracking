@@ -4,6 +4,28 @@
 const token = localStorage.getItem("token");
 const user = JSON.parse(localStorage.getItem("user") || "null");
 
+// حماية الصفحة + logout من الـ URL
+(function handleAuthRedirect() {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("logout") === "1") {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.replace("/index.html?logout=1");
+    return;
+  }
+
+  if (!user || !token) {
+    window.location.replace("/index.html?logout=1");
+    return;
+  }
+
+  const current = location.pathname.split("/").pop() || "station.html";
+  if (user.homePage && user.homePage !== current) {
+    window.location.replace("/" + user.homePage);
+  }
+})();
+
 function apiHeaders(extra = {}) {
   return {
     "Content-Type": "application/json",
@@ -31,7 +53,7 @@ async function apiPost(url, body) {
 }
 
 // =========================
-// Tabs (same as yours)
+// Tabs
 // =========================
 const tabByGlass = document.getElementById("tabByGlass");
 const tabByOrder = document.getElementById("tabByOrder");
@@ -89,20 +111,18 @@ function fillHeader() {
 }
 
 // =========================
-// State (real data from DB)
+// State
 // =========================
-let queue = []; // rows from /api/stations/my/queue
-// each row: { piece_id, piece_code, piece_status, order_code, station_name }
+let queue = []; // { piece_id, piece_code, piece_status, order_code, station_name }
 
 function norm(s) {
   return (s || "").trim().toLowerCase();
 }
 
 function mapStatusToUi(piece_status) {
-  // DB: not_started / in_process / completed / broken
   if (piece_status === "completed") return "completed";
   if (piece_status === "broken") return "broken";
-  return "waiting"; // not_started أو in_process
+  return "waiting"; // not_started / in_process
 }
 
 function pillClass(uiStatus) {
@@ -134,21 +154,20 @@ const ordersBody = document.getElementById("ordersBody");
 const orderSearchInput = document.getElementById("orderSearchInput");
 
 function buildOrdersSummary() {
-  const map = new Map(); // order_code -> { orderNo, pieces, pending, customer, due }
+  const map = new Map();
   for (const p of queue) {
     const orderNo = p.order_code || "—";
     if (!map.has(orderNo)) {
       map.set(orderNo, {
         orderNo,
-        customer: "—", // إذا بعدين ضفت customer بالـDB منعدّلها
-        due: "—", // إذا عندك due_date منعدّلها
+        customer: "—",
+        due: "—",
         pieces: 0,
         pending: 0,
       });
     }
     const o = map.get(orderNo);
     o.pieces++;
-    // queue أصلاً بس not_started/in_process، بس خلّينا عامة
     if (p.piece_status !== "completed" && p.piece_status !== "broken")
       o.pending++;
   }
@@ -164,26 +183,26 @@ function renderOrdersList() {
   );
 
   const rows = orders
-    .map((o) => {
-      return `
-        <tr>
-          <td><strong>${o.orderNo}</strong></td>
-          <td>${o.customer}</td>
-          <td>${o.pieces}</td>
-          <td>
-            <span class="status-pill ${
-              o.pending ? "status-in-progress" : "status-completed"
-            }">${o.pending}</span>
-          </td>
-          <td>${o.due}</td>
-          <td>
-            <button class="link-btn" data-open-order="${
-              o.orderNo
-            }" type="button">Open</button>
-          </td>
-        </tr>
-      `;
-    })
+    .map(
+      (o) => `
+    <tr>
+      <td><strong>${o.orderNo}</strong></td>
+      <td>${o.customer}</td>
+      <td>${o.pieces}</td>
+      <td>
+        <span class="status-pill ${
+          o.pending ? "status-in-progress" : "status-completed"
+        }">${o.pending}</span>
+      </td>
+      <td>${o.due}</td>
+      <td>
+        <button class="link-btn" data-open-order="${o.orderNo}" type="button">
+          Open
+        </button>
+      </td>
+    </tr>
+  `
+    )
     .join("");
 
   ordersBody.innerHTML =
@@ -194,7 +213,7 @@ function renderOrdersList() {
 orderSearchInput?.addEventListener("input", renderOrdersList);
 
 // =========================
-// Order Modal (pieces in this station for that order)
+// Order Modal
 // =========================
 const orderModal = document.getElementById("orderModal");
 const orderModalCloseBtn = document.getElementById("orderModalCloseBtn");
@@ -265,30 +284,32 @@ function renderOrderPieces() {
         const uiStatus = mapStatusToUi(p.piece_status);
         const disabled = uiStatus !== "waiting" ? "disabled" : "";
         return `
-          <tr>
-            <td><strong>${p.piece_code}</strong></td>
-            <td>—</td>
-            <td>—</td>
-            <td>—</td>
-            <td><span class="status-pill ${pillClass(uiStatus)}">${pillLabel(
-          uiStatus
-        )}</span></td>
-            <td>
-              <button class="btn btn-primary btn-small" data-piece-done="${
-                p.piece_code
-              }" type="button" ${disabled}>
-                Done
-              </button>
-            </td>
-            <td>
-              <button class="btn btn-ghost btn-small" data-piece-broken="${
-                p.piece_code
-              }" type="button" ${disabled}>
-                Broken
-              </button>
-            </td>
-          </tr>
-        `;
+        <tr>
+          <td><strong>${p.piece_code}</strong></td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>
+            <span class="status-pill ${pillClass(uiStatus)}">
+              ${pillLabel(uiStatus)}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-primary btn-small"
+                    data-piece-done="${p.piece_code}"
+                    type="button" ${disabled}>
+              Done
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-ghost btn-small"
+                    data-piece-broken="${p.piece_code}"
+                    type="button" ${disabled}>
+              Broken
+            </button>
+          </td>
+        </tr>
+      `;
       })
       .join("") ||
     `<tr><td colspan="7" style="color:#6b7280; font-size:0.85rem;">No pieces match your filter.</td></tr>`;
@@ -323,7 +344,6 @@ nextPageBtn?.addEventListener("click", () => {
   renderOrderPieces();
 });
 
-// Open order button click
 ordersBody?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-open-order]");
   if (!btn) return;
@@ -361,7 +381,7 @@ orderPiecesBody?.addEventListener("click", async (e) => {
 });
 
 // =========================
-// By glass number (Find -> details -> Done/Broken)
+// By glass number
 // =========================
 const glassNumberInput = document.getElementById("glassNumberInput");
 const glassFindBtn = document.getElementById("glassFindBtn");
@@ -450,7 +470,6 @@ pieceDoneBtn?.addEventListener("click", async () => {
     incTodayPassed();
     await loadQueue();
 
-    // بعد التحديث: حاول نرجع نعرض نفس القطعة إذا لسه بالمحطة (غالباً رح تروح)
     const stillHere = queue.find(
       (x) => norm(x.piece_code) === norm(currentPieceCode)
     );
@@ -469,7 +488,7 @@ pieceBrokenBtn?.addEventListener("click", () => {
 });
 
 // =========================
-// Broken Modal (your UI) -> backend
+// Broken Modal
 // =========================
 const brokenBtn = document.getElementById("brokenBtn");
 const brokenModal = document.getElementById("brokenModal");
@@ -504,7 +523,6 @@ brokenConfirmBtn?.addEventListener("click", async () => {
     return;
   }
 
-  // تأكد إنها بالمحطة
   const found = queue.find((x) => norm(x.piece_code) === norm(pieceCode));
   if (!found) {
     showStatus("error", `Glass ${pieceCode} is not in YOUR station queue.`);
@@ -520,7 +538,6 @@ brokenConfirmBtn?.addEventListener("click", async () => {
     await apiPost("/api/pieces/broken", { pieceCode, notes: fullNotes });
 
     await loadQueue();
-    // إذا كانت تفاصيل By glass مفتوحة على نفس القطعة
     if (currentPieceCode && norm(currentPieceCode) === norm(pieceCode))
       clearPieceDetails();
 
@@ -531,7 +548,7 @@ brokenConfirmBtn?.addEventListener("click", async () => {
     closeBrokenModal();
   }
 });
-// ===== Logout =====
+
 // ===== Logout =====
 const logoutBtn = document.getElementById("logoutBtn");
 logoutBtn?.addEventListener("click", () => {

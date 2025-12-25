@@ -10,7 +10,7 @@ function handleDbError(e) {
   return e;
 }
 
-// ✅ Scan Next (المحطة والمستخدم من التوكن)
+// Scan Next
 router.post("/scan-next", async (req, res, next) => {
   try {
     const { pieceCode, notes = null } = req.body;
@@ -27,9 +27,9 @@ router.post("/scan-next", async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: "No station assigned to this user" });
 
-    // 1) تحقق القطعة موجودة وبأي محطة
+    // ✅ استخدم أعمدة الـ DB: id + status
     const [rows] = await pool.execute(
-      `SELECT piece_id, current_station_id, piece_status
+      `SELECT id AS piece_id, current_station_id, status AS piece_status
        FROM glass_pieces
        WHERE piece_code = ?
        LIMIT 1`,
@@ -41,33 +41,31 @@ router.post("/scan-next", async (req, res, next) => {
 
     const piece = rows[0];
 
-    // 2) تحقق الحالة
     if (piece.piece_status === "broken" || piece.piece_status === "completed") {
       return res
         .status(400)
         .json({ ok: false, error: `Piece is ${piece.piece_status}` });
     }
 
-    // 3) أهم تحقق: لازم القطعة تكون بمحطة المستخدم
     if (Number(piece.current_station_id) !== Number(stationId)) {
       return res
         .status(400)
         .json({ ok: false, error: "Piece is not at your station" });
     }
 
-    // 4) نفّذ move_next (حسب الـworkflow تبع الطلبية إذا انت عدّلته)
     await pool.execute("CALL sp_move_next(?, ?, ?)", [
       pieceCode,
       userId || null,
       notes,
     ]);
 
-    // رجّع وضع القطعة بعد التحديث
     const [updated] = await pool.execute(
       `
-      SELECT gp.piece_code, gp.piece_status, s.name AS current_station
+      SELECT gp.piece_code,
+             gp.status AS piece_status,
+             s.name AS current_station
       FROM glass_pieces gp
-      LEFT JOIN stations s ON s.station_id = gp.current_station_id
+      LEFT JOIN stations s ON s.id = gp.current_station_id
       WHERE gp.piece_code = ?
       LIMIT 1
       `,
@@ -80,7 +78,7 @@ router.post("/scan-next", async (req, res, next) => {
   }
 });
 
-// ✅ Broken (stationName ما عاد يجي من الفرونت)
+// Broken
 router.post("/broken", async (req, res, next) => {
   try {
     const { pieceCode, notes = null } = req.body;
@@ -97,9 +95,8 @@ router.post("/broken", async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: "No station assigned to this user" });
 
-    // هات اسم المحطة من DB (لأن sp_mark_broken بدها stationName)
     const [srows] = await pool.execute(
-      "SELECT name FROM stations WHERE station_id = ? LIMIT 1",
+      "SELECT name FROM stations WHERE id = ? LIMIT 1",
       [stationId]
     );
     if (!srows.length)
@@ -116,9 +113,11 @@ router.post("/broken", async (req, res, next) => {
 
     const [rows] = await pool.execute(
       `
-      SELECT gp.piece_code, gp.piece_status, s.name AS current_station
+      SELECT gp.piece_code,
+             gp.status AS piece_status,
+             s.name AS current_station
       FROM glass_pieces gp
-      LEFT JOIN stations s ON s.station_id = gp.current_station_id
+      LEFT JOIN stations s ON s.id = gp.current_station_id
       WHERE gp.piece_code = ?
       LIMIT 1
       `,
@@ -131,13 +130,14 @@ router.post("/broken", async (req, res, next) => {
   }
 });
 
-// ✅ History (مثل ما هو)
+// History
 router.get("/:pieceCode/history", async (req, res, next) => {
   try {
     const { pieceCode } = req.params;
 
+    // ✅ alias id → piece_id
     const [pieceRows] = await pool.execute(
-      "SELECT piece_id, piece_code FROM glass_pieces WHERE piece_code=? LIMIT 1",
+      "SELECT id AS piece_id, piece_code FROM glass_pieces WHERE piece_code=? LIMIT 1",
       [pieceCode]
     );
 
@@ -146,15 +146,19 @@ router.get("/:pieceCode/history", async (req, res, next) => {
 
     const pieceId = pieceRows[0].piece_id;
 
+    // ✅ عندك في الجدول اسم العمود created_at مش event_time
     const [rows] = await pool.execute(
       `
-      SELECT pe.event_time, pe.event_type, pe.notes,
-             s.name AS station_name, u.username AS by_user
+      SELECT pe.created_at AS event_time,
+             pe.event_type,
+             pe.notes,
+             s.name AS station_name,
+             u.username AS by_user
       FROM piece_events pe
-      LEFT JOIN stations s ON s.station_id = pe.station_id
-      LEFT JOIN users u ON u.user_id = pe.user_id
+      LEFT JOIN stations s ON s.id = pe.station_id
+      LEFT JOIN users   u ON u.id = pe.user_id
       WHERE pe.piece_id = ?
-      ORDER BY pe.event_time ASC
+      ORDER BY pe.created_at ASC
       `,
       [pieceId]
     );

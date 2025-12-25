@@ -3,33 +3,24 @@
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
   const els = {
-    orderNo: document.getElementById("ioOrderNo"),
-    subtitle: document.getElementById("ioSubtitle"),
-    status: document.getElementById("ioStatus"),
+    userChip: document.getElementById("userChip"),
+    plannerStatus: document.getElementById("plannerStatus"),
 
-    sumOrder: document.getElementById("ioSummaryOrder"),
-    sumClient: document.getElementById("ioSummaryClient"),
-    sumPrf: document.getElementById("ioSummaryPrf"),
-    sumDelivery: document.getElementById("ioSummaryDelivery"),
+    kpiDraft: document.getElementById("kpiDraft"),
+    kpiActive: document.getElementById("kpiActive"),
+    kpiPaused: document.getElementById("kpiPaused"),
+    kpiPieces: document.getElementById("kpiPieces"),
 
-    bulkAllBtn: document.getElementById("ioBulkAllBtn"),
-    bulkThicknessSelect: document.getElementById("ioBulkThicknessSelect"),
-    bulkThicknessBtn: document.getElementById("ioBulkThicknessBtn"),
+    statusFilter: document.getElementById("statusFilter"),
+    searchInput: document.getElementById("searchInput"),
+    draftOnlyToggle: document.getElementById("draftOnlyToggle"),
+    refreshBtn: document.getElementById("refreshBtn"),
 
-    totals: document.getElementById("ioTotals"),
-    linesBody: document.getElementById("ioLinesBody"),
-    activateBtn: document.getElementById("ioActivateBtn"),
+    ordersBody: document.getElementById("ordersBody"),
   };
 
-  const params = new URLSearchParams(window.location.search);
-  const orderId = parseInt(params.get("orderId") || "0", 10);
-
-  let currentOrderMeta = null;
-
-  function authHeaders(json = false) {
-    const h = { Authorization: `Bearer ${token}` };
-    if (json) h["Content-Type"] = "application/json";
-    return h;
+  function authHeaders() {
+    return { Authorization: `Bearer ${token}` };
   }
 
   function esc(s) {
@@ -41,354 +32,189 @@
       .replaceAll("'", "&#039;");
   }
 
-  function formatDate(d) {
-    if (!d) return "—";
-    const dt = new Date(d);
-    if (Number.isNaN(dt.getTime())) return "—";
-    return dt.toISOString().slice(0, 10);
-  }
-
   function setStatus(msg, type = "info") {
-    if (!els.status) return;
-    const colors = {
-      info: "#6b7280",
-      success: "#16a34a",
-      error: "#dc2626",
-    };
-    els.status.style.color = colors[type] || colors.info;
-    els.status.textContent = msg;
+    if (!els.plannerStatus) return;
+    els.plannerStatus.textContent = msg;
+    els.plannerStatus.className = `station-status-message ${type}`;
   }
 
-  // -------- Load meta from sessionStorage (from activation.js) --------
-  function loadMetaFromSession() {
-    try {
-      const raw = sessionStorage.getItem("intakeCurrentOrder");
-      if (!raw) return;
-      const o = JSON.parse(raw);
-      if (!o || !o.id || o.id !== orderId) return;
-      currentOrderMeta = o;
+  function statusPill(status) {
+    const s = String(status || "").toLowerCase();
+    if (s === "draft")
+      return `<span class="status-pill status-not-started">Draft</span>`;
+    if (s === "active")
+      return `<span class="status-pill status-in-progress">Active</span>`;
+    if (s === "paused")
+      return `<span class="status-pill status-delayed">Paused</span>`;
+    if (s === "completed")
+      return `<span class="status-pill status-completed">Completed</span>`;
+    return `<span class="status-pill status-not-started">${esc(
+      status || "—"
+    )}</span>`;
+  }
 
-      els.orderNo.textContent = o.order_no || o.id;
-      els.sumOrder.textContent = o.order_no || o.id;
-      els.sumClient.textContent = o.client || "—";
-      els.sumPrf.textContent = o.prf || "—";
-      els.sumDelivery.textContent = formatDate(o.delivery_date);
+  async function loadMe() {
+    try {
+      const res = await fetch("/api/auth/me", { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return;
+      const u = data.user || {};
+      els.userChip.textContent = `User: ${u.username || u.name || "—"}`;
     } catch (e) {
-      console.warn("meta parse error", e);
+      console.error("loadMe failed:", e);
     }
   }
 
-  function fallbackMetaIfNeeded() {
-    if (currentOrderMeta) return;
-    els.orderNo.textContent = orderId || "—";
-    els.sumOrder.textContent = orderId || "—";
-  }
-
-  // -------- Load lines --------
-  async function loadLines() {
-    if (!orderId || Number.isNaN(orderId)) {
-      setStatus("Missing orderId in URL.", "error");
-      return;
-    }
-
+  async function loadKpis() {
     try {
-      setStatus("Loading lines…", "info");
-      els.linesBody.innerHTML =
-        '<tr><td colspan="8" style="padding:12px; color:#6b7280;">Loading…</td></tr>';
+      const res = await fetch("/api/intake/kpis", { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return;
 
-      const res = await fetch(`/api/intake/orders/${orderId}/lines`, {
-        headers: authHeaders(),
-        cache: "no-store",
-      });
+      const k = data.kpis || {};
+      els.kpiDraft.textContent = Number(k.draft || 0);
+      els.kpiActive.textContent = Number(k.active || 0);
+      els.kpiPaused.textContent = Number(k.paused || 0);
+      els.kpiPieces.textContent = Number(k.piecesToday || 0);
+    } catch (e) {
+      console.error("loadKpis failed:", e);
+    }
+  }
+
+  async function loadOrders() {
+    try {
+      setStatus("Loading intake queue…", "info");
+      els.ordersBody.innerHTML = `
+        <tr>
+          <td colspan="9" style="padding:12px; color:#6b7280;">Loading…</td>
+        </tr>`;
+
+      const status = els.statusFilter.value || "all";
+      const q = (els.searchInput.value || "").trim();
+      const draftOnly = els.draftOnlyToggle.checked ? "1" : "0";
+
+      const params = new URLSearchParams();
+      if (status && status !== "all") params.set("status", status);
+      if (q) params.set("q", q);
+      if (draftOnly === "1") params.set("draftOnly", "1");
+
+      const url =
+        "/api/intake/orders" +
+        (params.toString() ? "?" + params.toString() : "");
+
+      const res = await fetch(url, { headers: authHeaders() });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.ok) {
-        els.linesBody.innerHTML = `
+        els.ordersBody.innerHTML = `
           <tr>
-            <td colspan="8" style="padding:12px; color:#dc2626;">
-              Failed to load lines: ${esc(data.error || res.status)}
+            <td colspan="9" style="color:#dc2626; padding:12px;">
+              Failed to load orders: ${esc(data.error || res.status)}
             </td>
           </tr>`;
-        setStatus("Failed to load lines.", "error");
+        setStatus("Failed to load orders.", "error");
         return;
       }
 
-      const lines = data.lines || [];
-      if (!lines.length) {
-        els.linesBody.innerHTML = `
+      const orders = data.orders || [];
+      if (!orders.length) {
+        els.ordersBody.innerHTML = `
           <tr>
-            <td colspan="8" style="padding:12px; color:#6b7280;">
-              No lines found for this order.
+            <td colspan="9" style="color:#6b7280; padding:12px;">
+              No orders match your filters.
             </td>
           </tr>`;
-        setStatus("No lines for this order.", "info");
+        setStatus("No orders in this view.", "info");
         return;
       }
 
-      renderLines(lines);
-      setStatus("Ready – choose qty then click “Send to Factory”.", "success");
+      els.ordersBody.innerHTML = "";
+      orders.forEach((o) => {
+        const created = o.created_at
+          ? new Date(o.created_at).toISOString().slice(0, 10)
+          : "—";
+        const delivery = o.delivery_date
+          ? new Date(o.delivery_date).toISOString().slice(0, 10)
+          : "—";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${esc(o.order_no)}</td>
+          <td>${esc(o.client)}</td>
+          <td>${esc(o.prf || "—")}</td>
+          <td>${esc(created)}</td>
+          <td>${esc(delivery)}</td>
+          <td>${Number(o.total_lines || 0)}</td>
+          <td>${Number(o.activated_lines || 0)}</td>
+          <td>${statusPill(o.status)}</td>
+          <td>
+            <button class="btn btn-primary btn-small"
+                    data-plan-order="${o.id}" type="button">
+              Open Intake
+            </button>
+          </td>
+        `;
+        els.ordersBody.appendChild(tr);
+      });
+
+      setStatus("Ready – open an order to plan intake.", "success");
     } catch (e) {
-      console.error("loadLines", e);
-      els.linesBody.innerHTML = `
+      console.error("loadOrders failed:", e);
+      els.ordersBody.innerHTML = `
         <tr>
-          <td colspan="8" style="padding:12px; color:#dc2626;">
-            Exception while loading lines: ${esc(e.message || e)}
+          <td colspan="9" style="color:#dc2626; padding:12px;">
+            Exception while loading orders: ${esc(e.message || e)}
           </td>
         </tr>`;
-      setStatus("Exception while loading lines.", "error");
+      setStatus("Exception while loading orders.", "error");
     }
   }
 
-  function fillThicknessDropdown(lines) {
-    const select = els.bulkThicknessSelect;
-    if (!select) return;
-    const seen = new Set();
-    select.innerHTML = `<option value="">Activate by thickness…</option>`;
+  function handleOrderClick(e) {
+    const btn = e.target.closest("[data-plan-order]");
+    if (!btn) return;
 
-    lines.forEach((ln) => {
-      const t = (ln.glass_type || "").trim();
-      if (!t || seen.has(t)) return;
-      seen.add(t);
-      const opt = document.createElement("option");
-      opt.value = t;
-      opt.textContent = t;
-      select.appendChild(opt);
-    });
-  }
-
-  function renderLines(lines) {
-    els.linesBody.innerHTML = "";
-
-    lines.forEach((ln) => {
-      const remaining = Math.max(
-        0,
-        Number(ln.qty || 0) - Number(ln.activated_qty || 0)
-      );
-
-      const tr = document.createElement("tr");
-      tr.dataset.lineId = ln.id;
-      tr.dataset.totalQty = ln.qty || 0;
-      tr.dataset.activated = ln.activated_qty || 0;
-      tr.dataset.remaining = remaining;
-      tr.dataset.thickness = ln.glass_type || "";
-
-      tr.innerHTML = `
-        <td>${esc(ln.line_code || "—")}</td>
-        <td>${esc(ln.line_code || "—")}</td>
-        <td>${esc(ln.glass_type || ln.size || "—")}</td>
-        <td>${Number(ln.qty || 0)}</td>
-        <td>${Number(ln.activated_qty || 0)}</td>
-        <td>
-          <input type="number"
-                 class="input io-activate-input"
-                 min="0"
-                 max="${remaining}"
-                 value="0"
-                 style="max-width:80px;" />
-          <div style="font-size:0.7rem; color:#6b7280;">
-            Remaining: ${remaining}
-          </div>
-        </td>
-        <td>
-          <select class="input io-priority-select" style="max-width:90px;">
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-          </select>
-        </td>
-        <td style="text-align:center;">
-          <input type="checkbox" class="io-go-checkbox" />
-        </td>
-      `;
-
-      els.linesBody.appendChild(tr);
-    });
-
-    els.linesBody
-      .querySelectorAll(".io-activate-input, .io-go-checkbox")
-      .forEach((el) => {
-        el.addEventListener("input", recalcTotals);
-        el.addEventListener("change", recalcTotals);
-      });
-
-    fillThicknessDropdown(lines);
-    recalcTotals();
-  }
-
-  function recalcTotals() {
-    const rows = els.linesBody.querySelectorAll("tr");
-    let lines = 0;
-    let pieces = 0;
-
-    rows.forEach((tr) => {
-      const input = tr.querySelector(".io-activate-input");
-      const chk = tr.querySelector(".io-go-checkbox");
-      if (!input || !chk || !chk.checked) return;
-      const v = Number(input.value || 0);
-      if (v > 0) {
-        lines++;
-        pieces += v;
-      }
-    });
-
-    if (els.totals) {
-      els.totals.textContent = `Selected lines: ${lines} | Pieces to activate now: ${pieces}`;
-    }
-  }
-
-  // -------- Bulk actions --------
-  function bulkActivateAll() {
-    const rows = els.linesBody.querySelectorAll("tr");
-    rows.forEach((tr) => {
-      const remaining = Number(tr.dataset.remaining || 0);
-      const input = tr.querySelector(".io-activate-input");
-      const chk = tr.querySelector(".io-go-checkbox");
-      if (!input || !chk) return;
-
-      if (remaining > 0) {
-        input.value = remaining;
-        chk.checked = true;
-      } else {
-        input.value = 0;
-      }
-    });
-
-    recalcTotals();
-    setStatus("All remaining pieces selected for activation.", "info");
-  }
-
-  function bulkActivateByThickness() {
-    const select = els.bulkThicknessSelect;
-    if (!select || !select.value) {
-      setStatus("Choose a thickness first.", "error");
-      return;
-    }
-
-    const target = select.value;
-    let affectedLines = 0;
-    let affectedPieces = 0;
-
-    const rows = els.linesBody.querySelectorAll("tr");
-    rows.forEach((tr) => {
-      const thickness = (tr.dataset.thickness || "").trim();
-      if (thickness !== target) return;
-
-      const remaining = Number(tr.dataset.remaining || 0);
-      const input = tr.querySelector(".io-activate-input");
-      const chk = tr.querySelector(".io-go-checkbox");
-      if (!input || !chk) return;
-
-      if (remaining > 0) {
-        input.value = remaining;
-        chk.checked = true;
-        affectedLines++;
-        affectedPieces += remaining;
-      }
-    });
-
-    if (affectedLines === 0) {
-      setStatus(`No remaining pieces found for thickness "${target}".`, "info");
-    } else {
-      setStatus(
-        `Selected ${affectedLines} line(s) – ${affectedPieces} piece(s) for thickness "${target}".`,
-        "success"
-      );
-    }
-
-    recalcTotals();
-  }
-
-  // -------- Send to Factory --------
-  async function sendToFactory() {
+    const orderId = Number(btn.dataset.planOrder || 0);
     if (!orderId) return;
 
-    const rows = els.linesBody.querySelectorAll("tr");
-    const lines = [];
+    // نحفظ meta بـ sessionStorage لصفحة plan-intake.html
+    const tr = btn.closest("tr");
+    if (!tr) return;
+    const cells = tr.querySelectorAll("td");
 
-    rows.forEach((tr) => {
-      const lineId = Number(tr.dataset.lineId || 0);
-      const input = tr.querySelector(".io-activate-input");
-      const chk = tr.querySelector(".io-go-checkbox");
-      const prioSel = tr.querySelector(".io-priority-select");
-      if (!lineId || !input || !chk) return;
+    const meta = {
+      id: orderId,
+      order_no: cells[0]?.textContent?.trim() || "",
+      client: cells[1]?.textContent?.trim() || "",
+      prf: cells[2]?.textContent?.trim() || "",
+      delivery_date: cells[4]?.textContent?.trim() || "",
+    };
 
-      const qty = Number(input.value || 0);
-      const go = chk.checked && qty > 0;
-      const priority = prioSel ? prioSel.value : "normal";
+    sessionStorage.setItem("intakeCurrentOrder", JSON.stringify(meta));
 
-      lines.push({
-        lineId,
-        activateQty: qty,
-        priority,
-        go,
-      });
-    });
-
-    const toSend = lines.filter((x) => x.go && x.activateQty > 0);
-    if (!toSend.length) {
-      setStatus("Select at least one line with qty > 0.", "error");
-      return;
-    }
-
-    setStatus("Sending to factory…", "info");
-
-    try {
-      const res = await fetch("/api/intake/activate", {
-        method: "POST",
-        headers: authHeaders(true),
-        body: JSON.stringify({
-          orderId,
-          lines: toSend,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        console.error("activate error:", res.status, data);
-        setStatus(data.error || "Activation failed (server error).", "error");
-        return;
-      }
-
-      setStatus(
-        `Activation done ✅ Pieces created: ${
-          data.createdPieces || 0
-        } (lines: ${data.touchedLines || 0}).`,
-        "success"
-      );
-
-      // بعد ما يخلص رجّع المستخدم على قائمة الـ Intake
-      setTimeout(() => {
-        window.location.href = "activation.html";
-      }, 800);
-    } catch (e) {
-      console.error("sendToFactory", e);
-      setStatus("Activation failed (network/server).", "error");
-    }
+    window.location.href = `plan-intake.html?orderId=${orderId}`;
   }
 
-  // -------- Init --------
   function init() {
-    if (!orderId || Number.isNaN(orderId)) {
-      setStatus("Missing or invalid orderId.", "error");
+    if (!user || !token) {
+      window.location.replace("/index.html?logout=1");
       return;
     }
 
-    loadMetaFromSession();
-    fallbackMetaIfNeeded();
+    loadMe();
+    loadKpis();
+    loadOrders();
 
-    els.bulkAllBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      bulkActivateAll();
+    els.statusFilter?.addEventListener("change", loadOrders);
+    els.searchInput?.addEventListener("input", () => {
+      // small debounce ممكن بعدين
+      loadOrders();
     });
-    els.bulkThicknessBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      bulkActivateByThickness();
-    });
-    els.activateBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      sendToFactory();
-    });
+    els.draftOnlyToggle?.addEventListener("change", loadOrders);
+    els.refreshBtn?.addEventListener("click", loadOrders);
+    els.ordersBody?.addEventListener("click", handleOrderClick);
 
-    loadLines();
+    setStatus("Waiting for action…", "info");
   }
 
   init();

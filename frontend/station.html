@@ -7,24 +7,6 @@
     <title>Station</title>
     <link rel="stylesheet" href="css/style.css" />
 </head>
-<script>
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("logout") === "1") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.replace("/index.html?logout=1");
-    }
-
-    if (!user || !token) {
-        window.location.replace("/index.html?logout=1");
-    } else {
-        const current = location.pathname.split("/").pop() || "index.html";
-        if (user.homePage && user.homePage !== current) {
-            window.location.replace("/" + user.homePage);
-        }
-    }
-</script>
 
 
 <body class="station-body">

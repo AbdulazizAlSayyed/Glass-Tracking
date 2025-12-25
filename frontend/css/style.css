@@ -404,6 +404,44 @@ body {
 }
 
 .login-card {
+  /* ياخد تقريبًا نص الشاشة على اللابتوب */
+  width: 50vw; /* نص عرض الـ viewport */
+  max-width: 840px; /* ما يزيد كتير على الشاشات الكبيرة */
+  min-width: 620px; /* ما يصغر كتير على الشاشات المتوسطة */
+
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 22px;
+  padding: 28px 26px 22px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(209, 213, 219, 0.9);
+}
+
+.login-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+/* login */
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #e0f2fe, #f9fafb);
+}
+
+.login-card {
   width: 100%;
   max-width: 380px;
   background: rgba(255, 255, 255, 0.96);
@@ -414,24 +452,27 @@ body {
 }
 
 .login-title {
-  font-size: 1.2rem;
+  font-size: 1.35rem; /* كانت 1.2rem */
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .login-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-bottom: 16px;
+  font-size: 0.85rem; /* كانت 0.8rem */
+  margin-bottom: 18px;
 }
 
-.form-group {
-  margin-bottom: 12px;
+.input {
+  padding: 10px 14px; /* كانت 9px 12px */
+  font-size: 0.95rem; /* كانت 0.9rem */
 }
 
 /* responsive */
 
 @media (max-width: 900px) {
+  .login-card {
+    max-width: 480px;
+  }
   .app-shell {
     grid-template-columns: 1fr;
   }
@@ -839,4 +880,12 @@ body {
   font-size: 0.86rem;
   font-weight: 500;
   color: var(--text-main);
+}
+.nav-item-logout {
+  margin-top: auto;
+  color: var(--danger);
+}
+
+.nav-item-logout span {
+  font-weight: 600;
 }

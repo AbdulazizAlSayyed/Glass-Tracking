@@ -55,8 +55,10 @@
       return `<span class="status-pill status-not-started">Draft</span>`;
     if (s === "active")
       return `<span class="status-pill status-in-progress">Active</span>`;
-    if (s === "cancelled")
-      return `<span class="status-pill status-delayed">Cancelled</span>`;
+    if (s === "paused")
+      return `<span class="status-pill status-delayed">Paused</span>`;
+    if (s === "completed")
+      return `<span class="status-pill status-completed">Completed</span>`;
     return `<span class="status-pill status-not-started">${esc(
       status || "—"
     )}</span>`;
@@ -94,7 +96,6 @@
     return fd;
   }
 
-  // ✅ load user from DB
   async function loadMe() {
     try {
       const res = await fetch("/api/auth/me", { headers: authHeaders() });

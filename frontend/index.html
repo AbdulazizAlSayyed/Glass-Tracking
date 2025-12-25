@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Login</title>
     <link rel="stylesheet" href="css/style.css" />
+    <script>
+        // ✅ إذا في user + token أصلاً، ما في داعي يرجع على صفحة اللوجن
+        (function () {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            const token = localStorage.getItem("token");
+
+            if (user && token) {
+                const home = user.homePage || "dashboard.html";
+                window.location.replace("/" + home);
+            }
+        })();
+    </script>
 </head>
 
 <body>
@@ -41,6 +53,7 @@
             const username = document.getElementById("username").value.trim();
             const password = document.getElementById("password").value.trim();
             const errorEl = document.getElementById("loginError");
+            errorEl.style.color = "#dc2626";
             errorEl.textContent = "";
 
             if (!username || !password) {
@@ -66,11 +79,8 @@
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("user", JSON.stringify(data.user));
 
-                // Optional: show small message
-                // errorEl.style.color = "#16a34a";
-                // errorEl.textContent = "Login successful, redirecting…";
-
-                // ✅ generic redirect – per-user homePage will redirect on each page
+                // ✅ بعد اللوجن، منروحه على dashboard
+                // وباقي الصفحات (activation/import/...) رح تعيد التوجيه حسب homePage
                 window.location.href = "/dashboard.html";
             } catch (e) {
                 console.error("Login error:", e);
@@ -78,9 +88,7 @@
             }
         }
 
-        document
-            .getElementById("loginForm")
-            .addEventListener("submit", doLogin);
+        document.getElementById("loginForm").addEventListener("submit", doLogin);
     </script>
 </body>
 

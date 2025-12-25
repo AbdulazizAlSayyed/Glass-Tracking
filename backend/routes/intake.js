@@ -29,7 +29,7 @@ router.get("/kpis", async (req, res, next) => {
         draft: Number(r.draft_count || 0),
         active: Number(r.active_count || 0),
         paused: Number(r.paused_count || 0),
-        piecesToday: 0,
+        piecesToday: 0, // ممكن لاحقاً نربطها بـ glass_pieces
       },
     });
   } catch (e) {
@@ -37,7 +37,7 @@ router.get("/kpis", async (req, res, next) => {
   }
 });
 
-// Orders list
+// Orders list for intake
 router.get("/orders", async (req, res, next) => {
   try {
     const status = String(req.query.status || "all").toLowerCase();
@@ -100,7 +100,7 @@ router.get("/orders", async (req, res, next) => {
   }
 });
 
-// Order lines
+// Order lines for intake
 router.get("/orders/:orderId/lines", async (req, res, next) => {
   try {
     const orderId = clampInt(req.params.orderId, 1, 999999999, null);
@@ -130,7 +130,7 @@ router.get("/orders/:orderId/lines", async (req, res, next) => {
   }
 });
 
-// Activate lines
+// Activate lines = create pieces
 router.post("/activate", async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -192,8 +192,16 @@ router.post("/activate", async (req, res, next) => {
         const seq = already + i;
         const pieceCode = `${orderNo}-${lineCode}-${seq}`;
         await conn.execute(
-          `INSERT INTO glass_pieces (piece_code, order_id, line_id, current_station_id, status)
-           VALUES (?, ?, ?, ?, 'Waiting')`,
+          `
+          INSERT INTO glass_pieces (
+            piece_code,
+            order_id,
+            line_id,
+            current_station_id,
+            status
+          )
+          VALUES (?, ?, ?, ?, 'Waiting')
+          `,
           [pieceCode, orderId, lineId, firstStationId]
         );
         createdPieces++;
@@ -203,9 +211,10 @@ router.post("/activate", async (req, res, next) => {
     }
 
     if (createdPieces > 0) {
-      await conn.execute(`UPDATE orders SET status = 'Active' WHERE id = ?`, [
-        orderId,
-      ]);
+      await conn.execute(
+        `UPDATE orders SET status = 'Active' WHERE id = ? AND status = 'Draft'`,
+        [orderId]
+      );
     }
 
     await conn.commit();
