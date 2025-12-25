@@ -15,17 +15,32 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
-// Test connection
-(async () => {
-  try {
-    const connection = await pool.getConnection();
-    console.log("✅ Database connected successfully");
-    connection.release();
-  } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
-    process.exit(1);
-  }
-})();
+// اختبار الاتصال وإظهار الأخطاء
+pool
+  .getConnection()
+  .then((connection) => {
+    console.log("✅ Connected to MySQL database:", process.env.DB_NAME);
 
-// Export the pool
+    // اختبار استعلام بسيط للتحقق من الجداول
+    return connection.query("SHOW TABLES").then(([rows]) => {
+      console.log(
+        "📊 Tables in database:",
+        rows.map((r) => Object.values(r)[0]).join(", ")
+      );
+      connection.release();
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Database connection failed:");
+    console.error("   Error:", err.message);
+    console.error("   Host:", process.env.DB_HOST || "localhost");
+    console.error("   Database:", process.env.DB_NAME || "glass_tracking");
+    console.error("   User:", process.env.DB_USER || "root");
+    console.error("\nPlease check:");
+    console.error("1. MySQL service is running");
+    console.error("2. Database exists: CREATE DATABASE glass_tracking;");
+    console.error("3. User has proper permissions");
+    console.error("4. Check .env file configuration");
+  });
+
 module.exports = pool;

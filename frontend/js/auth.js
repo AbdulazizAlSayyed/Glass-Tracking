@@ -1,3 +1,24 @@
+// 1. Helper functions أولاً
+// 2. Auto-redirect
+// 3. DOM Ready handler
+// 4. Login handler
+// 5. Logout helper
+// 6. Other helpers
+// 7. Export to window
+
+// =============================
+// Helper: Get base path
+// =============================
+function getBasePath() {
+  const pathParts = window.location.pathname.split("/");
+  const fileName = window.location.pathname.split("/").pop();
+  if (fileName && fileName.includes(".html")) {
+    pathParts.pop();
+  }
+  const base = pathParts.filter(Boolean).join("/");
+  return base ? "/" + base + "/" : "/";
+}
+
 // =============================
 // Auto-redirect if already logged in
 // =============================
@@ -5,8 +26,6 @@
   try {
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "null");
-
-    // بس لو هو على صفحة index / أو /index.html
     const path = window.location.pathname;
     const onLoginPage =
       path === "/" ||
@@ -15,7 +34,6 @@
       path.endsWith("/");
 
     if (token && user && onLoginPage) {
-      // حساب المسار الأساسي للتطبيق
       const basePath = getBasePath();
       const home = user.homePage || "dashboard.html";
       window.location.replace(basePath + home);
@@ -26,34 +44,16 @@
 })();
 
 // =============================
-// Helper: Get base path
-// =============================
-function getBasePath() {
-  // إذا كان التطبيق يعمل على مسار فرعي
-  const pathParts = window.location.pathname.split("/");
-  // إزالة اسم الملف الحالي
-  const fileName = window.location.pathname.split("/").pop();
-  if (fileName && fileName.includes(".html")) {
-    pathParts.pop();
-  }
-
-  const base = pathParts.filter(Boolean).join("/");
-  return base ? "/" + base + "/" : "/";
-}
-
-// =============================
 // DOM Ready handler
 // =============================
 function initAuth() {
   const loginForm = document.getElementById("loginForm");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // ----- Login form -----
   if (loginForm) {
     loginForm.addEventListener("submit", handleLoginSubmit);
   }
 
-  // ----- Logout button (header) -----
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -62,7 +62,6 @@ function initAuth() {
   }
 }
 
-// Initialize when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAuth);
 } else {
@@ -83,19 +82,16 @@ async function handleLoginSubmit(event) {
   const username = (usernameEl?.value || "").trim();
   const password = (passwordEl?.value || "").trim();
 
-  // Reset error
   if (errorEl) {
     errorEl.style.color = "#dc2626";
     errorEl.textContent = "";
   }
 
-  // Validation
   if (!username || !password) {
     if (errorEl) errorEl.textContent = "Please enter username and password.";
     return;
   }
 
-  // Disable button and show loading
   const originalBtnText = loginBtn?.textContent || "Login";
   if (loginBtn) {
     loginBtn.disabled = true;
@@ -130,11 +126,9 @@ async function handleLoginSubmit(event) {
       return;
     }
 
-    // ✅ Save token + user (with homePage)
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    // Redirect to user homePage or dashboard
     const home = data.user?.homePage || "dashboard.html";
     window.location.href = basePath + home;
   } catch (e) {
@@ -144,7 +138,6 @@ async function handleLoginSubmit(event) {
       errorEl.textContent = "Network error. Please check your connection.";
     }
   } finally {
-    // Re-enable button
     if (loginBtn) {
       loginBtn.disabled = false;
       loginBtn.textContent = originalBtnText;
@@ -157,16 +150,11 @@ async function handleLoginSubmit(event) {
 // =============================
 function doLogout() {
   try {
-    // Clear all auth data
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("role");
     localStorage.removeItem("station_id");
-
-    // Clear session storage
     sessionStorage.clear();
-
-    // Clear any cookies
     document.cookie.split(";").forEach((cookie) => {
       const eqPos = cookie.indexOf("=");
       const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
@@ -176,7 +164,6 @@ function doLogout() {
     console.warn("Logout clean error:", e);
   }
 
-  // Redirect to login page
   const basePath = getBasePath();
   window.location.replace(basePath + "index.html?logout=1");
 }
@@ -220,11 +207,29 @@ function getCurrentUser() {
 // =============================
 // Helper: Protect route - use in other pages
 // =============================
-function requireAuth(redirectTo = "index.html") {
+function requireAuth() {
   if (!isAuthenticated()) {
     const basePath = getBasePath();
-    window.location.href = basePath + redirectTo;
+    window.location.href = basePath + "index.html";
     return false;
   }
+
+  const user = getCurrentUser();
+  const currentPage = window.location.pathname.split("/").pop();
+
+  if (user && user.homePage && user.homePage !== currentPage) {
+    const basePath = getBasePath();
+    window.location.href = basePath + user.homePage;
+    return false;
+  }
+
   return true;
 }
+
+// =============================
+// Export functions to global scope
+// =============================
+window.isAuthenticated = isAuthenticated;
+window.getCurrentUser = getCurrentUser;
+window.requireAuth = requireAuth;
+window.getAuthHeaders = getAuthHeaders;

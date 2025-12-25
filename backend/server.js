@@ -14,9 +14,20 @@ const managerRoutes = require("./routes/manager");
 
 const app = express();
 
-app.use(cors());
+// CORS configuration
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? ["http://your-domain.com"]
+        : ["http://localhost:3000", "http://localhost:8080"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(morgan("dev"));
+app.use(express.urlencoded({ extended: true }));
 
 // Frontend path
 const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
@@ -25,6 +36,15 @@ app.use(express.static(FRONTEND_DIR));
 // Root
 app.get("/", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    message: "Glass Tracking API is running",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // API routes
@@ -37,16 +57,26 @@ app.use("/api/manager", authRequired, managerRoutes);
 
 // Who am I
 app.get("/api/auth/me", authRequired, async (req, res, next) => {
-  const conn = await require("./db").getConnection();
+  const pool = require("./db");
+  let conn;
   try {
+    conn = await pool.getConnection();
     const userId = req.user?.userId ?? req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({
+        ok: false,
+        error: "User ID not found in token",
+      });
+    }
 
     const [rows] = await conn.execute(
       `SELECT 
          id, 
          username, 
          role, 
-         home_page AS homePage
+         home_page AS homePage,
+         station_id AS stationId
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -54,33 +84,71 @@ app.get("/api/auth/me", authRequired, async (req, res, next) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ ok: false, error: "User not found" });
+      return res.status(404).json({
+        ok: false,
+        error: "User not found",
+      });
     }
 
-    res.json({ ok: true, user: rows[0] });
+    res.json({
+      ok: true,
+      user: rows[0],
+    });
   } catch (e) {
+    console.error("Error in /api/auth/me:", e);
     next(e);
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 });
 
-// open any frontend page
+// Fallback route for frontend pages
 app.get("/:file", (req, res, next) => {
+  const allowedPages = [
+    "index.html",
+    "dashboard.html",
+    "import-orders.html",
+    "station.html",
+    "activation.html",
+    "manager.html",
+  ];
+
+  if (!allowedPages.includes(req.params.file)) {
+    return next();
+  }
+
   const filePath = path.join(FRONTEND_DIR, req.params.file);
   res.sendFile(filePath, (err) => {
     if (err) next();
   });
 });
 
-// Error handler
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    ok: false,
+    error: "Route not found",
+  });
+});
+
+// Global error handler
 app.use((err, req, res, next) => {
+  console.error("❌ Server Error:", err);
   const status = err.status || 500;
-  console.error("ERROR:", err);
-  res.status(status).json({ ok: false, error: err.message || "Server error" });
+  const message =
+    process.env.NODE_ENV === "development"
+      ? err.message
+      : "Internal server error";
+
+  res.status(status).json({
+    ok: false,
+    error: message,
+  });
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () =>
-  console.log(`API+Frontend running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`🚀 API+Frontend running on http://localhost:${PORT}`);
+  console.log(`📁 Frontend directory: ${FRONTEND_DIR}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+});
