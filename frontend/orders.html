@@ -3,70 +3,13 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Orders</title>
     <link rel="stylesheet" href="css/style.css" />
-
-    <style>
-        .filters-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-        }
-
-        .filters-row .input {
-            max-width: 220px;
-        }
-
-        .filters-row .input.select {
-            max-width: 190px;
-        }
-
-        .filters-right {
-            margin-left: auto;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .muted {
-            color: #6b7280;
-            font-size: 0.8rem;
-        }
-
-        .row-clickable {
-            cursor: pointer;
-        }
-
-        .pager {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .pager-left,
-        .pager-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .mini {
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
-    </style>
 </head>
 
 <body>
     <div class="app-shell">
+
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -75,308 +18,125 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Dashboard</span>
+                <a href="manager-dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Dashboard</span>
                 </a>
+
                 <a href="orders.html" class="nav-item active">
-                    <div class="nav-item-icon"></div>
-                    <span>Orders</span>
+                    <div class="nav-item-icon"></div><span>Orders</span>
                 </a>
+
+                <a href="activation.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Activation</span>
+                </a>
+
                 <a href="live-tracking.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Live Tracking</span>
-                </a>
-                <a href="reports.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Reports</span>
-                </a>
-                <a href="users.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Users</span>
-                </a>
-                <a href="quality.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Quality</span>
-                </a>
-                <a href="delivery.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Delivery</span>
-                </a>
-                <a href="settings.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Settings</span>
-                </a>
-                <a href="notifications.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Notifications</span>
+                    <div class="nav-item-icon"></div><span>Live Tracking</span>
                 </a>
             </nav>
         </aside>
 
-        <!-- Main -->
+        <!-- Main Content -->
         <main class="main">
-            <header class="main-header">
-                <div>
-                    <div class="main-title">All Orders</div>
-                    <div class="main-subtitle">Search, filter and monitor all glass orders</div>
-                </div>
-                <div class="main-header-right">
-                    <span class="badge" id="badgeTotal">Total: 0</span>
-                    <span class="badge" id="badgeShown">Shown: 0</span>
-                    <button class="btn btn-ghost" onclick="window.location.href='index.html'">Logout</button>
+
+            <!-- Header -->
+            <header class="header">
+                <h1>Orders</h1>
+                <div class="chip-row">
+                    <span class="chip" id="chipUser">User: Manager</span>
+                    <span class="chip" id="chipFactory">Factory: Tripoli</span>
                 </div>
             </header>
 
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Filters</div>
-                        <div class="card-subtitle">Narrow down orders by status, stage, customer, or date</div>
-                    </div>
-                </div>
-
+            <!-- Filters -->
+            <section class="filters-section">
                 <div class="filters-row">
-                    <input id="searchInput" type="text" class="input" placeholder="Search: order / client / ref" />
 
-                    <select id="statusSelect" class="input select">
-                        <option value="all">Status: All</option>
-                        <option value="draft">Draft</option>
-                        <option value="in_progress">In progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="delayed">Delayed</option>
-                        <option value="paused">Paused</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-
-                    <select id="stageSelect" class="input select">
-                        <option value="all">Stage: All</option>
-                        <option>Cutting</option>
-                        <option>Grinding</option>
-                        <option>Washing</option>
-                        <option>Furnace</option>
-                        <option>Double</option>
-                        <option>Lamination</option>
-                        <option>Packing</option>
-                        <option>Delivery</option>
-                    </select>
-
-                    <input id="dateFrom" type="date" class="input" style="max-width: 160px;" />
-                    <input id="dateTo" type="date" class="input" style="max-width: 160px;" />
-
-                    <label class="muted" style="display:flex; align-items:center; gap:8px;">
-                        <input id="includeCompleted" type="checkbox" checked />
-                        Include completed
-                    </label>
-
-                    <div class="filters-right">
-                        <button class="btn btn-ghost" id="clearFiltersBtn" type="button">Clear</button>
-                        <button class="btn btn-primary" id="applyBtn" type="button">Apply</button>
+                    <div class="filter">
+                        <label>Search</label>
+                        <input type="text" id="searchInput" placeholder="Order number, client, PRF...">
                     </div>
-                </div>
 
-                <div class="table-wrapper">
-                    <table class="table orders-table">
-                        <thead>
-                            <tr>
-                                <th>Order #</th>
-                                <th>Customer</th>
-                                <th>Glass summary</th>
-                                <th>Qty</th>
-                                <th>Current stage</th>
-                                <th>Status</th>
-                                <th>Created at</th>
-                                <th>Due date</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="ordersTbody"></tbody>
-                    </table>
-                </div>
-
-                <div class="pager">
-                    <div class="pager-left">
-                        <span class="mini" id="pagerInfo">Page 1</span>
-                        <select id="pageSize" class="input" style="max-width:120px;">
-                            <option value="10">10 / page</option>
-                            <option value="20">20 / page</option>
-                            <option value="50">50 / page</option>
+                    <div class="filter">
+                        <label>Status</label>
+                        <select id="statusFilter">
+                            <option value="all">All</option>
+                            <option value="draft">Draft</option>
+                            <option value="active">Active</option>
+                            <option value="delivery-ready">Delivery Ready</option>
+                            <option value="completed">Completed</option>
                         </select>
                     </div>
 
-                    <div class="pager-right">
-                        <button class="btn btn-ghost" id="prevBtn" type="button">Prev</button>
-                        <button class="btn btn-primary" id="nextBtn" type="button">Next</button>
+                    <div class="filter">
+                        <label>Stage</label>
+                        <select id="stageFilter">
+                            <option value="all">All</option>
+                            <option value="cut">Cut</option>
+                            <option value="polish">Polish</option>
+                            <option value="wash">Wash</option>
+                            <option value="furnace">Furnace</option>
+                            <option value="packing">Packing</option>
+                        </select>
                     </div>
-                </div>
 
+                    <div class="filter">
+                        <label>Date From</label>
+                        <input type="date" id="dateFrom">
+                    </div>
+
+                    <div class="filter">
+                        <label>Date To</label>
+                        <input type="date" id="dateTo">
+                    </div>
+
+                    <div class="filter">
+                        <label class="checkbox">
+                            <input type="checkbox" id="includeCompleted">
+                            <span>Include Completed</span>
+                        </label>
+                    </div>
+
+                </div>
             </section>
+
+            <!-- Orders Table -->
+            <section class="card">
+                <h2>Orders List</h2>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order No</th>
+                            <th>Client</th>
+                            <th>PRF</th>
+                            <th>Status</th>
+                            <th>Qty</th>
+                            <th>Stage</th>
+                            <th>Delivery Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align:center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <button id="prevPage">Prev</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPage">Next</button>
+                </div>
+            </section>
+
         </main>
+
     </div>
 
-    <script>
-        // ===== Fake data (front only) =====
-        const ORDERS = [
-            { id: "ORD-1001", customer: "ALEXCO", ref: "580", glass: "10mm Clear Tempered", qty: 24, stage: "Cutting", status: "in_progress", createdAt: "2025-12-18 09:20", due: "2025-12-28" },
-            { id: "ORD-1002", customer: "Project Alpha", ref: "581", glass: "6mm Double Clear", qty: 8, stage: "Furnace", status: "delayed", createdAt: "2025-12-18 08:45", due: "2025-12-26" },
-            { id: "ORD-1003", customer: "Showroom", ref: "610", glass: "8mm Laminated", qty: 3, stage: "Lamination", status: "completed", createdAt: "2025-12-17 15:10", due: "2025-12-22" },
-            { id: "ORD-1004", customer: "Maison", ref: "615", glass: "10mm Clear Tempered", qty: 9, stage: "Washing", status: "in_progress", createdAt: "2025-12-18 07:55", due: "2025-12-29" },
-            { id: "ORD-1005", customer: "Tempo", ref: "616", glass: "10mm Clear Tempered", qty: 6, stage: "Grinding", status: "in_progress", createdAt: "2025-12-18 07:20", due: "2025-12-27" },
-            { id: "ORD-1006", customer: "City Mall", ref: "620", glass: "Double 6+6", qty: 12, stage: "Packing", status: "in_progress", createdAt: "2025-12-18 06:40", due: "2025-12-30" },
-            { id: "ORD-1007", customer: "Office Tower", ref: "621", glass: "8mm Clear", qty: 4, stage: "Delivery", status: "completed", createdAt: "2025-12-16 10:10", due: "2025-12-21" },
-            { id: "ORD-1008", customer: "VIP Client", ref: "622", glass: "10mm Grey", qty: 2, stage: "Cutting", status: "draft", createdAt: "2025-12-18 10:05", due: "2025-12-31" },
-            { id: "ORD-1009", customer: "Big Project", ref: "623", glass: "Laminated 6+6", qty: 20, stage: "Double", status: "paused", createdAt: "2025-12-15 11:00", due: "2026-01-05" },
-            { id: "ORD-1010", customer: "Old Cancel", ref: "624", glass: "6mm Clear", qty: 5, stage: "Cutting", status: "cancelled", createdAt: "2025-12-10 09:00", due: "2025-12-20" },
-        ];
-
-        const tbody = document.getElementById("ordersTbody");
-        const badgeTotal = document.getElementById("badgeTotal");
-        const badgeShown = document.getElementById("badgeShown");
-
-        const searchInput = document.getElementById("searchInput");
-        const statusSelect = document.getElementById("statusSelect");
-        const stageSelect = document.getElementById("stageSelect");
-        const dateFrom = document.getElementById("dateFrom");
-        const dateTo = document.getElementById("dateTo");
-        const includeCompleted = document.getElementById("includeCompleted");
-
-        const clearFiltersBtn = document.getElementById("clearFiltersBtn");
-        const applyBtn = document.getElementById("applyBtn");
-
-        const prevBtn = document.getElementById("prevBtn");
-        const nextBtn = document.getElementById("nextBtn");
-        const pageSizeEl = document.getElementById("pageSize");
-        const pagerInfo = document.getElementById("pagerInfo");
-
-        let page = 1;
-
-        function statusPill(status) {
-            if (status === "in_progress") return `<span class="status-pill status-in-progress">In progress</span>`;
-            if (status === "completed") return `<span class="status-pill status-completed">Completed</span>`;
-            if (status === "delayed") return `<span class="status-pill status-delayed">Delayed</span>`;
-            if (status === "draft") return `<span class="status-pill status-not-started">Draft</span>`;
-            if (status === "paused") return `<span class="status-pill status-delayed">Paused</span>`;
-            if (status === "cancelled") return `<span class="status-pill status-delayed">Cancelled</span>`;
-            return `<span class="status-pill status-not-started">${status}</span>`;
-        }
-
-        function parseDateOnly(createdAt) {
-            // createdAt: "YYYY-MM-DD HH:MM"
-            return createdAt.split(" ")[0];
-        }
-
-        function getFilteredOrders() {
-            const q = (searchInput.value || "").trim().toLowerCase();
-            const st = statusSelect.value;
-            const stage = stageSelect.value;
-            const incCompleted = includeCompleted.checked;
-
-            const from = dateFrom.value ? new Date(dateFrom.value) : null;
-            const to = dateTo.value ? new Date(dateTo.value) : null;
-
-            return ORDERS.filter(o => {
-                if (!incCompleted && o.status === "completed") return false;
-
-                if (q) {
-                    const hay = `${o.id} ${o.customer} ${o.ref} ${o.glass}`.toLowerCase();
-                    if (!hay.includes(q)) return false;
-                }
-
-                if (st !== "all" && o.status !== st) return false;
-                if (stage !== "all" && o.stage !== stage) return false;
-
-                if (from || to) {
-                    const d = new Date(parseDateOnly(o.createdAt));
-                    if (from && d < from) return false;
-                    if (to && d > to) return false;
-                }
-
-                return true;
-            });
-        }
-
-        function render() {
-            badgeTotal.textContent = `Total: ${ORDERS.length}`;
-
-            const filtered = getFilteredOrders();
-            badgeShown.textContent = `Shown: ${filtered.length}`;
-
-            const pageSize = parseInt(pageSizeEl.value, 10) || 10;
-            const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
-            if (page > maxPage) page = maxPage;
-            if (page < 1) page = 1;
-
-            const start = (page - 1) * pageSize;
-            const slice = filtered.slice(start, start + pageSize);
-
-            pagerInfo.textContent = `Page ${page} / ${maxPage} • ${start + 1}-${Math.min(start + pageSize, filtered.length)} of ${filtered.length}`;
-
-            tbody.innerHTML = "";
-
-            slice.forEach(o => {
-                const tr = document.createElement("tr");
-                tr.className = "order-row row-clickable";
-                tr.dataset.orderId = o.id;
-
-                if (o.status === "delayed") tr.classList.add("row-delayed");
-
-                tr.innerHTML = `
-          <td>${o.id}</td>
-          <td>${o.customer}</td>
-          <td>${o.glass}</td>
-          <td>${o.qty}</td>
-          <td>${o.stage}</td>
-          <td>${statusPill(o.status)}</td>
-          <td>${o.createdAt}</td>
-          <td>${o.due}</td>
-          <td>
-            <button class="btn btn-ghost detailsBtn" type="button">Details</button>
-          </td>
-        `;
-
-                // row click => open details
-                tr.addEventListener("click", () => {
-                    window.location.href = `order-details.html?order=${encodeURIComponent(o.id)}`;
-                });
-
-                // prevent double click bubble on button
-                tr.querySelector(".detailsBtn").addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    window.location.href = `order-details.html?order=${encodeURIComponent(o.id)}`;
-                });
-
-                tbody.appendChild(tr);
-            });
-        }
-
-        clearFiltersBtn.addEventListener("click", () => {
-            searchInput.value = "";
-            statusSelect.value = "all";
-            stageSelect.value = "all";
-            dateFrom.value = "";
-            dateTo.value = "";
-            includeCompleted.checked = true;
-            page = 1;
-            render();
-        });
-
-        applyBtn.addEventListener("click", () => {
-            page = 1;
-            render();
-        });
-
-        prevBtn.addEventListener("click", () => { page--; render(); });
-        nextBtn.addEventListener("click", () => { page++; render(); });
-        pageSizeEl.addEventListener("change", () => { page = 1; render(); });
-
-        // Live filtering feel
-        searchInput.addEventListener("input", () => { page = 1; render(); });
-        statusSelect.addEventListener("change", () => { page = 1; render(); });
-        stageSelect.addEventListener("change", () => { page = 1; render(); });
-        includeCompleted.addEventListener("change", () => { page = 1; render(); });
-
-        render();
-    </script>
+    <script src="js/orders.js"></script>
 </body>
 
 </html>

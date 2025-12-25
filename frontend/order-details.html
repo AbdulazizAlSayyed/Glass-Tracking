@@ -3,147 +3,14 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Order Details</title>
     <link rel="stylesheet" href="css/style.css" />
-
-    <style>
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-            font-size: 0.85rem;
-        }
-
-        @media (max-width: 900px) {
-            .summary-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        .filters-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .filters-row .input {
-            max-width: 220px;
-        }
-
-        .muted {
-            color: #6b7280;
-            font-size: 0.8rem;
-        }
-
-        .clickable {
-            cursor: pointer;
-        }
-
-        .row-select {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
-
-        /* Modal */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.45);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            z-index: 9999;
-        }
-
-        .modal-backdrop.active {
-            display: flex;
-        }
-
-        .modal {
-            background: #fff;
-            width: 920px;
-            max-width: 100%;
-            border-radius: 16px;
-            box-shadow: 0 20px 70px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            border: 1px solid rgba(226, 232, 240, 0.9);
-        }
-
-        .modal-header {
-            padding: 12px 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-        }
-
-        .modal-title {
-            font-weight: 700;
-            font-size: 1rem;
-        }
-
-        .modal-close {
-            border: none;
-            background: transparent;
-            font-size: 1.4rem;
-            cursor: pointer;
-            padding: 0 6px;
-            border-radius: 10px;
-        }
-
-        .modal-close:hover {
-            background: #f3f4f6;
-        }
-
-        .modal-body {
-            padding: 14px;
-        }
-
-        .kv {
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 6px 10px;
-            font-size: 0.85rem;
-            margin-bottom: 12px;
-        }
-
-        .kv .k {
-            color: #6b7280;
-        }
-
-        .history {
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            border-radius: 12px;
-            padding: 10px;
-            background: #f9fafb;
-            font-size: 0.85rem;
-        }
-
-        .history .row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 6px 0;
-            border-bottom: 1px dashed rgba(203, 213, 225, 0.9);
-        }
-
-        .history .row:last-child {
-            border-bottom: none;
-        }
-
-        .mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-    </style>
 </head>
 
 <body>
+
     <div class="app-shell">
+
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -152,756 +19,95 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Dashboard</span>
+                <a href="manager-dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Dashboard</span>
                 </a>
+
                 <a href="orders.html" class="nav-item active">
-                    <div class="nav-item-icon"></div>
-                    <span>Orders</span>
+                    <div class="nav-item-icon"></div><span>Orders</span>
                 </a>
+
+                <a href="activation.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Activation</span>
+                </a>
+
                 <a href="live-tracking.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Live Tracking</span>
-                </a>
-                <a href="reports.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Reports</span>
-                </a>
-                <a href="users.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Users</span>
-                </a>
-                <a href="quality.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Quality</span>
-                </a>
-                <a href="delivery.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Delivery</span>
-                </a>
-                <a href="settings.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Settings</span>
-                </a>
-                <a href="notifications.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Notifications</span>
+                    <div class="nav-item-icon"></div><span>Live Tracking</span>
                 </a>
             </nav>
         </aside>
 
-        <!-- Main -->
         <main class="main">
-            <header class="main-header">
-                <div>
-                    <div class="main-title" id="orderTitle">Order</div>
-                    <div class="main-subtitle">Full tracking for this order – lines, pieces and station history</div>
-                </div>
-                <div class="main-header-right">
-                    <span class="badge" id="statusBadge">Status: -</span>
-                    <button class="btn btn-ghost" onclick="window.location.href='orders.html'">Back to orders</button>
-                </div>
+
+            <!-- Header -->
+            <header class="header">
+                <h1>Order Details</h1>
+                <button onclick="window.location.href='orders.html'" class="btn">← Back</button>
             </header>
 
-            <!-- Order info -->
+            <!-- Order Info -->
             <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Order information</div>
-                        <div class="card-subtitle">Imported from Noria + tracking status</div>
-                    </div>
-                </div>
+                <h2>Order Information</h2>
 
-                <div class="summary-grid">
-                    <div>
-                        <div class="stat-label">Order #</div>
-                        <div class="stat-value" id="infoOrderId">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Noria reference</div>
-                        <div class="stat-value" id="infoNoriaRef">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Customer</div>
-                        <div class="stat-value" id="infoCustomer">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Delivery date</div>
-                        <div class="stat-value" id="infoDue">-</div>
-                    </div>
-
-                    <div>
-                        <div class="stat-label">Total glass pieces</div>
-                        <div class="stat-value" id="infoTotal">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">In production</div>
-                        <div class="stat-value" id="infoInProd">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Completed (Delivered)</div>
-                        <div class="stat-value" id="infoCompleted">-</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Broken</div>
-                        <div class="stat-value" id="infoBroken">-</div>
-                    </div>
+                <div class="grid">
+                    <div><strong>Order No:</strong> <span id="orderNo">—</span></div>
+                    <div><strong>Client:</strong> <span id="client">—</span></div>
+                    <div><strong>PRF:</strong> <span id="prf">—</span></div>
+                    <div><strong>Delivery Date:</strong> <span id="deliveryDate">—</span></div>
+                    <div><strong>Status:</strong> <span id="status">—</span></div>
+                    <div><strong>Created At:</strong> <span id="createdAt">—</span></div>
                 </div>
             </section>
 
-            <!-- Lines -->
+            <!-- Order Lines -->
             <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Order lines (from Noria)</div>
-                        <div class="card-subtitle">Each line = glass type + size + quantity</div>
-                    </div>
-                </div>
+                <h2>Order Lines</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Line Code</th>
+                            <th>Qty</th>
+                            <th>Size</th>
+                            <th>Glass Type</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
 
-                <div class="table-wrapper">
-                    <table class="table" id="linesTable">
-                        <thead>
-                            <tr>
-                                <th>Line</th>
-                                <th>Ref</th>
-                                <th>Description</th>
-                                <th>Size</th>
-                                <th>Qty</th>
-                                <th>Total m²</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="linesTbody"></tbody>
-                    </table>
-                </div>
+                    <tbody id="linesTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </section>
 
             <!-- Pieces -->
             <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Glass pieces status</div>
-                        <div class="card-subtitle">Filter + export + print labels. Click a piece to open its scan
-                            history.</div>
-                    </div>
-                </div>
+                <h2>Glass Pieces</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Piece Code</th>
+                            <th>Status</th>
+                            <th>Station</th>
+                            <th>Broken Reason</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
 
-                <!-- Filters row -->
-                <div class="filters-row">
-                    <input id="pieceSearch" class="input" type="text" placeholder="Search piece / line / type..." />
-
-                    <select id="pieceStage" class="input" style="max-width:200px;">
-                        <option value="all">Station: All</option>
-                        <option>Cutting</option>
-                        <option>Grinding</option>
-                        <option>Washing</option>
-                        <option>Furnace</option>
-                        <option>Double</option>
-                        <option>Lamination</option>
-                        <option>Packing</option>
-                        <option>Delivery</option>
-                        <option>Broken</option>
-                    </select>
-
-                    <label class="muted" style="display:flex; align-items:center; gap:8px;">
-                        <input id="brokenOnly" type="checkbox" />
-                        Broken only
-                    </label>
-
-                    <label class="muted" style="display:flex; align-items:center; gap:8px;">
-                        <input id="selectAll" type="checkbox" />
-                        Select all (filtered)
-                    </label>
-
-                    <div style="margin-left:auto; display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="btn btn-ghost" id="exportCsvBtn" type="button">Export CSV</button>
-                        <button class="btn btn-primary" id="printLabelsBtn" type="button">Print labels</button>
-                    </div>
-                </div>
-
-                <div class="muted" id="piecesCount" style="margin-bottom:8px;">—</div>
-
-                <div class="table-wrapper">
-                    <table class="table" id="piecesTable">
-                        <thead>
-                            <tr>
-                                <th style="width:44px;"></th>
-                                <th>Glass #</th>
-                                <th>Line</th>
-                                <th>Size</th>
-                                <th>Type</th>
-                                <th>Current station</th>
-                                <th>Status</th>
-                                <th>Last scan</th>
-                                <th>Broken reason</th>
-                            </tr>
-                        </thead>
-                        <tbody id="piecesTbody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Summary -->
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Order status summary</div>
-                        <div class="card-subtitle">High level overview for management</div>
-                    </div>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:14px; font-size:0.85rem;">
-                    <div class="card" style="flex:1; min-width:260px; padding:10px 12px;">
-                        <div class="stat-label">Overall status</div>
-                        <div style="margin-top:6px;" id="overallStatusBox"></div>
-                        <div style="margin-top:8px;" class="muted">
-                            When all pieces reach <strong>Delivery</strong>, order becomes <strong>Completed</strong>.
-                        </div>
-                    </div>
-
-                    <div class="card" style="flex:1; min-width:260px; padding:10px 12px;">
-                        <div class="stat-label">Broken pieces</div>
-                        <div style="margin-top:6px;" id="brokenBox"></div>
-                    </div>
-                </div>
+                    <tbody id="piecesTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </section>
 
         </main>
+
     </div>
 
-    <!-- Piece modal -->
-    <div class="modal-backdrop" id="pieceModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">Piece details – <span id="pmGlassNo">-</span></div>
-                <button class="modal-close" id="pmCloseBtn" aria-label="Close">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="kv">
-                    <div class="k">Order</div>
-                    <div id="pmOrder">-</div>
-
-                    <div class="k">Line</div>
-                    <div id="pmLine">-</div>
-
-                    <div class="k">Type</div>
-                    <div id="pmType">-</div>
-
-                    <div class="k">Size</div>
-                    <div id="pmSize">-</div>
-
-                    <div class="k">Current station</div>
-                    <div id="pmStation">-</div>
-
-                    <div class="k">Status</div>
-                    <div id="pmStatus">-</div>
-
-                    <div class="k">Broken reason</div>
-                    <div id="pmReason">-</div>
-                </div>
-
-                <div class="history" id="pmHistory"></div>
-
-                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
-                    <button class="btn btn-ghost" id="pmCloseBtn2" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // =========================
-        // Demo DB (Front-end only)
-        // =========================
-        const DB = {
-            "ORD-1001": {
-                id: "ORD-1001",
-                ref: "580",
-                customer: "ALEXCO Glass",
-                due: "2025-12-28",
-                status: "in_progress",
-                lines: [
-                    { line: "F1", ref: "580-F1", desc: "10mm Clear Tempered", size: "2100 × 900", qty: 4, sqm: 7.56 },
-                    { line: "F2", ref: "580-F2", desc: "10mm Clear Tempered", size: "2000 × 500", qty: 3, sqm: 3.00 },
-                    { line: "D1", ref: "580-D1", desc: "Double Glass 6+6 Clear", size: "1500 × 800", qty: 5, sqm: 6.00 },
-                ],
-                pieces: [
-                    { glassNo: "580-F1-1", line: "F1", size: "2100 × 900", type: "10mm Clear T", station: "Grinding", status: "in_progress", lastScan: "09:52", brokenReason: "" },
-                    { glassNo: "580-F1-2", line: "F1", size: "2100 × 900", type: "10mm Clear T", station: "Cutting", status: "delayed", lastScan: "09:30", brokenReason: "" },
-                    { glassNo: "580-F1-3", line: "F1", size: "2100 × 900", type: "10mm Clear T", station: "Furnace", status: "not_started", lastScan: "–", brokenReason: "" },
-                    { glassNo: "580-F1-4", line: "F1", size: "2100 × 900", type: "10mm Clear T", station: "Broken", status: "broken", lastScan: "09:41", brokenReason: "Fell on floor" },
-                    { glassNo: "580-F2-1", line: "F2", size: "2000 × 500", type: "10mm Clear T", station: "Packing", status: "completed", lastScan: "10:15", brokenReason: "" },
-                    { glassNo: "580-F2-2", line: "F2", size: "2000 × 500", type: "10mm Clear T", station: "Delivery", status: "completed", lastScan: "10:45", brokenReason: "" },
-                ],
-                pieceHistory: {
-                    "580-F1-1": [
-                        { t: "08:10", msg: "Activated for production" },
-                        { t: "09:12", msg: "Scanned at Cutting" },
-                        { t: "09:52", msg: "Scanned at Grinding" },
-                    ],
-                    "580-F1-4": [
-                        { t: "09:00", msg: "Scanned at Cutting" },
-                        { t: "09:41", msg: "Marked as BROKEN (Fell on floor)" },
-                    ],
-                    "580-F2-2": [
-                        { t: "09:10", msg: "Scanned at Furnace" },
-                        { t: "10:15", msg: "Scanned at Packing" },
-                        { t: "10:45", msg: "Delivered / Out" },
-                    ]
-                }
-            },
-
-            "ORD-1002": {
-                id: "ORD-1002",
-                ref: "581",
-                customer: "Project Alpha",
-                due: "2025-12-26",
-                status: "delayed",
-                lines: [
-                    { line: "A1", ref: "581-A1", desc: "6mm Double Clear", size: "1800 × 900", qty: 8, sqm: 12.96 },
-                ],
-                pieces: [
-                    { glassNo: "581-A1-1", line: "A1", size: "1800 × 900", type: "6mm Double", station: "Furnace", status: "delayed", lastScan: "08:45", brokenReason: "" },
-                    { glassNo: "581-A1-2", line: "A1", size: "1800 × 900", type: "6mm Double", station: "Furnace", status: "delayed", lastScan: "08:46", brokenReason: "" },
-                ],
-                pieceHistory: {
-                    "581-A1-1": [
-                        { t: "07:10", msg: "Scanned at Cutting" },
-                        { t: "08:45", msg: "Entered Furnace (delay detected)" },
-                    ],
-                }
-            }
-        };
-
-        // =========================
-        // Helpers
-        // =========================
-        function pillForPieceStatus(s) {
-            if (s === "completed") return `<span class="status-pill status-completed">Completed</span>`;
-            if (s === "delayed") return `<span class="status-pill status-delayed">Delayed</span>`;
-            if (s === "broken") return `<span class="status-pill status-delayed">Broken</span>`;
-            if (s === "not_started") return `<span class="status-pill status-not-started">Queued</span>`;
-            return `<span class="status-pill status-in-progress">In progress</span>`;
-        }
-
-        function pillForOrderStatus(s) {
-            if (s === "completed") return { text: "Status: Completed", bg: "#dcfce7", color: "#15803d" };
-            if (s === "delayed") return { text: "Status: Delayed", bg: "#fee2e2", color: "#b91c1c" };
-            return { text: "Status: In progress", bg: "#dbeafe", color: "#1d4ed8" };
-        }
-
-        function escapeHtml(s) {
-            return String(s ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;");
-        }
-
-        function audit(action, entityType, entityId, details, severity = "info") {
-            try {
-                if (window.GTAudit && typeof window.GTAudit.add === "function") {
-                    window.GTAudit.add({ action, entityType, entityId, details, severity, user: "System" });
-                }
-            } catch (_) { }
-        }
-
-        // =========================
-        // Read order from URL
-        // =========================
-        const params = new URLSearchParams(window.location.search);
-        const orderId = params.get("order") || "ORD-1001";
-        const data = DB[orderId] || DB["ORD-1001"];
-
-        // Fill header + info
-        document.getElementById("orderTitle").textContent = `Order ${data.id}`;
-        document.getElementById("infoOrderId").textContent = data.id;
-        document.getElementById("infoNoriaRef").textContent = data.ref;
-        document.getElementById("infoCustomer").textContent = data.customer;
-        document.getElementById("infoDue").textContent = data.due;
-
-        const sb = pillForOrderStatus(data.status);
-        const statusBadge = document.getElementById("statusBadge");
-        statusBadge.textContent = sb.text;
-        statusBadge.style.background = sb.bg;
-        statusBadge.style.color = sb.color;
-
-        // Stats
-        const total = data.pieces.length;
-        const broken = data.pieces.filter(p => p.status === "broken").length;
-        const delivered = data.pieces.filter(p => p.station === "Delivery").length;
-        const inProd = data.pieces.filter(p => p.status === "in_progress" || p.status === "delayed" || p.status === "not_started").length;
-
-        document.getElementById("infoTotal").textContent = total;
-        document.getElementById("infoBroken").textContent = broken;
-        document.getElementById("infoCompleted").textContent = delivered;
-        document.getElementById("infoInProd").textContent = inProd;
-
-        // Render lines
-        const linesTbody = document.getElementById("linesTbody");
-        linesTbody.innerHTML = "";
-
-        data.lines.forEach(l => {
-            const linePieces = data.pieces.filter(p => p.line === l.line);
-            const lineBroken = linePieces.filter(p => p.status === "broken").length;
-            const lineDelivered = linePieces.filter(p => p.station === "Delivery").length;
-
-            let lineStatusHtml = `<span class="status-pill status-not-started">Not started</span>`;
-            if (linePieces.length && lineDelivered === linePieces.length && linePieces.length > 0) {
-                lineStatusHtml = `<span class="status-pill status-completed">Delivered</span>`;
-            } else if (linePieces.length && lineBroken > 0) {
-                lineStatusHtml = `<span class="status-pill status-delayed">Has breakage</span>`;
-            } else if (linePieces.length) {
-                lineStatusHtml = `<span class="status-pill status-in-progress">In production</span>`;
-            }
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-        <td>${escapeHtml(l.line)}</td>
-        <td>${escapeHtml(l.ref)}</td>
-        <td>${escapeHtml(l.desc)}</td>
-        <td>${escapeHtml(l.size)}</td>
-        <td>${escapeHtml(l.qty)}</td>
-        <td>${escapeHtml(l.sqm)}</td>
-        <td>${lineStatusHtml}</td>
-      `;
-            linesTbody.appendChild(tr);
-        });
-
-        // Summary boxes
-        const overallBox = document.getElementById("overallStatusBox");
-        const brokenBox = document.getElementById("brokenBox");
-
-        let overallHtml = `<span class="status-pill status-in-progress">In progress</span>`;
-        if (data.status === "delayed") overallHtml = `<span class="status-pill status-delayed">Delayed – needs attention</span>`;
-        if (delivered === total && broken === 0 && total > 0) overallHtml = `<span class="status-pill status-completed">Completed (Delivered)</span>`;
-        overallBox.innerHTML = overallHtml;
-
-        if (broken === 0) {
-            brokenBox.innerHTML = `<div class="muted">No broken pieces in this order.</div>`;
-        } else {
-            const list = data.pieces
-                .filter(p => p.status === "broken")
-                .map(p => `<li>${escapeHtml(p.glassNo)} – ${escapeHtml(p.station)} – ${escapeHtml(p.brokenReason || "No reason")}</li>`)
-                .join("");
-            brokenBox.innerHTML = `
-        <div style="color:#b91c1c; font-weight:600;">${broken} broken piece(s)</div>
-        <ul style="margin-top:6px; padding-left:18px; font-size:0.85rem; color:#6b7280;">${list}</ul>
-      `;
-        }
-
-        // =========================
-        // Pieces: filters + select + modal
-        // =========================
-        const piecesTbody = document.getElementById("piecesTbody");
-        const pieceSearch = document.getElementById("pieceSearch");
-        const pieceStage = document.getElementById("pieceStage");
-        const brokenOnly = document.getElementById("brokenOnly");
-        const selectAll = document.getElementById("selectAll");
-        const piecesCount = document.getElementById("piecesCount");
-
-        // Keep selection state
-        const selected = new Set();
-
-        function getFilteredPieces() {
-            const q = (pieceSearch.value || "").trim().toLowerCase();
-            const st = pieceStage.value;
-            const bo = brokenOnly.checked;
-
-            return data.pieces.filter(p => {
-                if (bo && p.status !== "broken") return false;
-                if (st !== "all" && p.station !== st) return false;
-                if (q) {
-                    const hay = `${p.glassNo} ${p.line} ${p.type} ${p.station} ${p.size}`.toLowerCase();
-                    if (!hay.includes(q)) return false;
-                }
-                return true;
-            });
-        }
-
-        function renderPieces() {
-            const filtered = getFilteredPieces();
-            piecesTbody.innerHTML = "";
-
-            // Count label
-            const totalFiltered = filtered.length;
-            const selectedFiltered = filtered.filter(p => selected.has(p.glassNo)).length;
-            piecesCount.textContent = `Showing ${totalFiltered} piece(s). Selected: ${selectedFiltered}`;
-
-            // Select all checkbox state
-            selectAll.checked = totalFiltered > 0 && selectedFiltered === totalFiltered;
-
-            filtered.forEach(p => {
-                const tr = document.createElement("tr");
-                tr.classList.add("clickable");
-                tr.dataset.glassNo = p.glassNo;
-                if (p.status === "delayed" || p.status === "broken") tr.classList.add("row-delayed");
-
-                tr.innerHTML = `
-          <td>
-            <input class="row-select" type="checkbox" data-select="${escapeHtml(p.glassNo)}" ${selected.has(p.glassNo) ? "checked" : ""} />
-          </td>
-          <td class="mono">${escapeHtml(p.glassNo)}</td>
-          <td>${escapeHtml(p.line)}</td>
-          <td>${escapeHtml(p.size)}</td>
-          <td>${escapeHtml(p.type)}</td>
-          <td>${escapeHtml(p.station)}</td>
-          <td>${pillForPieceStatus(p.status)}</td>
-          <td>${escapeHtml(p.lastScan)}</td>
-          <td>${escapeHtml(p.brokenReason || "-")}</td>
-        `;
-
-                // Row click -> open modal (but not when clicking checkbox)
-                tr.addEventListener("click", (e) => {
-                    const cb = e.target.closest("input[type='checkbox']");
-                    if (cb) return;
-                    openPieceModal(p.glassNo);
-                });
-
-                // Checkbox click -> toggle selection without opening modal
-                tr.querySelector("input[type='checkbox']").addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    const id = p.glassNo;
-                    if (e.target.checked) selected.add(id);
-                    else selected.delete(id);
-                    renderPieces();
-                });
-
-                piecesTbody.appendChild(tr);
-            });
-
-            if (!filtered.length) {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td colspan="9" class="muted">No pieces match the current filters.</td>`;
-                piecesTbody.appendChild(tr);
-            }
-        }
-
-        pieceSearch.addEventListener("input", () => { selectAll.checked = false; renderPieces(); });
-        pieceStage.addEventListener("change", () => { selectAll.checked = false; renderPieces(); });
-        brokenOnly.addEventListener("change", () => { selectAll.checked = false; renderPieces(); });
-
-        selectAll.addEventListener("change", () => {
-            const filtered = getFilteredPieces();
-            if (selectAll.checked) filtered.forEach(p => selected.add(p.glassNo));
-            else filtered.forEach(p => selected.delete(p.glassNo));
-            renderPieces();
-        });
-
-        // =========================
-        // Export CSV (Filtered view)
-        // =========================
-        document.getElementById("exportCsvBtn").addEventListener("click", () => {
-            const filtered = getFilteredPieces();
-            const header = ["glassNo", "line", "size", "type", "station", "status", "lastScan", "brokenReason"];
-
-            const rows = filtered.map(p => [
-                p.glassNo, p.line, p.size, p.type, p.station, p.status, p.lastScan, (p.brokenReason || "")
-            ]);
-
-            const csv = [header.join(","), ...rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(","))].join("\n");
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${data.id}_pieces_filtered.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-
-            audit("export_csv", "order", data.id, `Exported filtered pieces CSV (${filtered.length} rows).`, "info");
-        });
-
-        // =========================
-        // Print Labels (Selected only)
-        // =========================
-
-        // Print Labels (TEXT ONLY - no barcode, no QR)
-        document.getElementById("printLabelsBtn").addEventListener("click", () => {
-            const selectedPieces = data.pieces.filter(p => selected.has(p.glassNo));
-
-            if (!selectedPieces.length) {
-                alert("Select at least one piece to print labels.");
-                return;
-            }
-
-            const w = window.open("", "_blank");
-
-            const labelsHtml = selectedPieces.map(p => `
-            <div class="label">
-                <div class="label-top">
-                    <div class="brand">
-                        <div class="brand-title">Glass Tracking</div>
-                        <div class="brand-sub">
-                            Order: <b>${escapeHtml(data.id)}</b> • Ref: <b>${escapeHtml(data.ref)}</b>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="glassno">
-                    ${escapeHtml(p.glassNo)}
-                </div>
-
-                <div class="info-grid">
-                    <div><span>Line</span><b>${escapeHtml(p.line)}</b></div>
-                    <div><span>Size</span><b>${escapeHtml(p.size)}</b></div>
-                    <div><span>Type</span><b>${escapeHtml(p.type)}</b></div>
-                    <div><span>Station</span><b>${escapeHtml(p.station)}</b></div>
-                    <div><span>Status</span><b>${escapeHtml(p.status)}</b></div>
-                    <div><span>Last scan</span><b>${escapeHtml(p.lastScan)}</b></div>
-                </div>
-
-                <div class="label-foot">
-                    Printed: ${new Date().toLocaleString()}
-                </div>
-            </div>
-            `).join("");
-
-            w.document.write(`
-            <!doctype html>
-            <html>
-                <head>
-                    <meta charset="utf-8" />
-                    <title>Print Labels - ${escapeHtml(data.id)}</title>
-                    <style>
-                        body {font - family: Arial, sans-serif; margin: 16px; }
-                        .toolbar {
-                            display:flex; justify-content:space-between; align-items:center;
-                        margin-bottom: 12px;
-            }
-                        .toolbar .title {font - weight: 800; }
-                        .toolbar button {padding:8px 12px; cursor:pointer; border:1px solid #111; border-radius:10px; background:#fff; }
-
-                        .page {
-                            display: grid;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                        gap: 12px;
-            }
-
-                        .label {
-                            border: 2px solid #111;
-                        border-radius: 14px;
-                        padding: 12px 14px;
-                        page-break-inside: avoid;
-            }
-
-                        .label-top {display:flex; justify-content:space-between; gap:10px; }
-                        .brand-title {font - weight: 900; font-size: 14px; }
-                        .brand-sub {font - size: 12px; color: #111; margin-top: 2px; }
-
-                        .glassno {
-                            margin - top: 10px;
-                        border: 2px solid #111;
-                        border-radius: 12px;
-                        padding: 10px 12px;
-                        font-size: 22px;
-                        font-weight: 900;
-                        text-align: center;
-                        letter-spacing: 1px;
-            }
-
-                        .info-grid {
-                            margin - top: 12px;
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 10px;
-                        font-size: 12px;
-            }
-                        .info-grid span {color: #444; display:block; font-size: 11px; }
-                        .info-grid b {display:block; margin-top: 2px; }
-
-                        .label-foot {
-                            margin - top: 12px;
-                        padding-top: 8px;
-                        border-top: 1px dashed #111;
-                        font-size: 10px;
-                        color: #444;
-            }
-
-                        @media print {
-                            body {margin: 0; }
-                        .toolbar {display:none; }
-            }
-                    </style>
-                </head>
-                <body>
-                    <div class="toolbar">
-                        <div class="title">Labels (Text Only) — ${escapeHtml(data.id)} — Selected: ${selectedPieces.length}</div>
-                        <button onclick="window.print()">Print</button>
-                    </div>
-
-                    <div class="page">
-                        ${labelsHtml}
-                    </div>
-                </body>
-            </html>
-    `);
-
-            w.document.close();
-        });
-
-        // =========================
-        // Piece modal
-        // =========================
-        const pieceModal = document.getElementById("pieceModal");
-        const pmCloseBtn = document.getElementById("pmCloseBtn");
-        const pmCloseBtn2 = document.getElementById("pmCloseBtn2");
-
-        const pmGlassNo = document.getElementById("pmGlassNo");
-        const pmOrder = document.getElementById("pmOrder");
-        const pmLine = document.getElementById("pmLine");
-        const pmType = document.getElementById("pmType");
-        const pmSize = document.getElementById("pmSize");
-        const pmStation = document.getElementById("pmStation");
-        const pmStatus = document.getElementById("pmStatus");
-        const pmReason = document.getElementById("pmReason");
-        const pmHistory = document.getElementById("pmHistory");
-
-        function openPieceModal(glassNo) {
-            const p = data.pieces.find(x => x.glassNo === glassNo);
-            if (!p) return;
-
-            pmGlassNo.textContent = p.glassNo;
-            pmOrder.textContent = data.id;
-            pmLine.textContent = p.line;
-            pmType.textContent = p.type;
-            pmSize.textContent = p.size;
-            pmStation.textContent = p.station;
-            pmStatus.innerHTML = pillForPieceStatus(p.status);
-            pmReason.textContent = p.brokenReason ? p.brokenReason : "-";
-
-            const hist = (data.pieceHistory && data.pieceHistory[glassNo]) ? data.pieceHistory[glassNo] : [];
-            pmHistory.innerHTML = `
-    <div style="font-weight:700; margin-bottom:6px;">Scan history</div>
-    ${hist.length ? hist.map(h => `
-    <div class="row">
-        <span class="muted">${escapeHtml(h.t)}</span>
-        <span>${escapeHtml(h.msg)}</span>
-    </div>
-    `).join("") : `<div class="muted">No history available for this piece (demo).</div>`}
-    `;
-
-            pieceModal.classList.add("active");
-        }
-
-        function closePieceModal() {
-            pieceModal.classList.remove("active");
-        }
-
-        pmCloseBtn.addEventListener("click", closePieceModal);
-        pmCloseBtn2.addEventListener("click", closePieceModal);
-
-        pieceModal.addEventListener("click", (e) => {
-            if (e.target === pieceModal) closePieceModal();
-        });
-
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") closePieceModal();
-        });
-
-        // Initial render
-        renderPieces();
-    </script>
+    <script src="js/orderDetails.js"></script>
 </body>
 
 </html>

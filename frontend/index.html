@@ -6,18 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Login</title>
     <link rel="stylesheet" href="css/style.css" />
-    <script>
-        // ✅ إذا في user + token أصلاً، ما في داعي يرجع على صفحة اللوجن
-        (function () {
-            const user = JSON.parse(localStorage.getItem("user") || "null");
-            const token = localStorage.getItem("token");
-
-            if (user && token) {
-                const home = user.homePage || "dashboard.html";
-                window.location.replace("/" + home);
-            }
-        })();
-    </script>
 </head>
 
 <body>
@@ -39,57 +27,15 @@
 
                 <div id="loginError" style="color:#dc2626; font-size:0.85rem; min-height:1.2rem;"></div>
 
-                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;" id="loginBtn">
                     Login
                 </button>
             </form>
         </div>
     </div>
 
-    <script>
-        async function doLogin(event) {
-            event.preventDefault();
-
-            const username = document.getElementById("username").value.trim();
-            const password = document.getElementById("password").value.trim();
-            const errorEl = document.getElementById("loginError");
-            errorEl.style.color = "#dc2626";
-            errorEl.textContent = "";
-
-            if (!username || !password) {
-                errorEl.textContent = "Please enter username and password.";
-                return;
-            }
-
-            try {
-                const res = await fetch("/api/auth/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password }),
-                });
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok || !data.ok) {
-                    errorEl.textContent = data.error || "Login failed.";
-                    return;
-                }
-
-                // ✅ save token + user (with homePage)
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("user", JSON.stringify(data.user));
-
-                // ✅ بعد اللوجن، منروحه على dashboard
-                // وباقي الصفحات (activation/import/...) رح تعيد التوجيه حسب homePage
-                window.location.href = "/dashboard.html";
-            } catch (e) {
-                console.error("Login error:", e);
-                errorEl.textContent = "Network/server error.";
-            }
-        }
-
-        document.getElementById("loginForm").addEventListener("submit", doLogin);
-    </script>
+    <!-- ✅ سكربت الأوث (فرونت) -->
+    <script src="js/auth.js"></script>
 </body>
 
 </html>
