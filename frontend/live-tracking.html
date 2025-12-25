@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Glass Tracking – Live Tracking</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+                <a href="quality.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Quality</span>
+                </a>
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Live Production Tracking</div>
+                    <div class="main-subtitle">See where every order is in the production line</div>
+                </div>
+                <div class="main-header-right">
+                    <span class="badge">Auto-refresh: 15s</span>
+                </div>
+            </header>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Production stages</div>
+                        <div class="card-subtitle">From cutting to final inspection</div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="live-legend">
+                    <div class="live-legend-item">
+                        <span class="live-legend-dot blue"></span> In progress
+                    </div>
+                    <div class="live-legend-item">
+                        <span class="live-legend-dot red"></span> Delayed / problem
+                    </div>
+                    <div class="live-legend-item">
+                        <span class="live-legend-dot green"></span> Completed at this stage
+                    </div>
+                    <div class="live-legend-item">
+                        <span class="live-legend-dot gray"></span> No active orders
+                    </div>
+                </div>
+
+                <div class="stage-grid" style="margin-top:12px;">
+                    <!-- Cutting -->
+                    <div class="stage-column">
+                        <div class="stage-header">
+                            <div class="stage-title">Cutting</div>
+                            <div class="stage-count">2 orders</div>
+                        </div>
+                        <button class="order-pill in-progress" data-order="ORD-1001">
+                            ORD-1001 · 5 pcs
+                        </button>
+                        <button class="order-pill" data-order="ORD-1005">
+                            ORD-1005 · 3 pcs
+                        </button>
+                    </div>
+
+                    <!-- Grinding -->
+                    <div class="stage-column">
+                        <div class="stage-header">
+                            <div class="stage-title">Grinding</div>
+                            <div class="stage-count">1 order</div>
+                        </div>
+                        <button class="order-pill in-progress" data-order="ORD-1002">
+                            ORD-1002 · 8 pcs
+                        </button>
+                    </div>
+
+                    <!-- Furnace -->
+                    <div class="stage-column">
+                        <div class="stage-header">
+                            <div class="stage-title">Furnace</div>
+                            <div class="stage-count">1 order</div>
+                        </div>
+                        <button class="order-pill delayed" data-order="ORD-1003">
+                            ORD-1003 · 6 pcs (Delayed)
+                        </button>
+                    </div>
+
+                    <!-- Double -->
+                    <div class="stage-column">
+                        <div class="stage-header">
+                            <div class="stage-title">Double</div>
+                            <div class="stage-count">0 orders</div>
+                        </div>
+                        <button class="order-pill empty">
+                            No active orders
+                        </button>
+                    </div>
+
+                    <!-- Lamination -->
+                    <div class="stage-column">
+                        <div class="stage-header">
+                            <div class="stage-title">Lamination</div>
+                            <div class="stage-count">1 order</div>
+                        </div>
+                        <button class="order-pill completed" data-order="ORD-0998">
+                            ORD-0998 · 4 pcs (Finished)
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px; font-size:0.75rem; color:#6b7280;">
+                    Click any order number to open its full details page.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // كل Order pill يفتح صفحة التفاصيل مع Query
+        document.querySelectorAll(".order-pill:not(.empty)").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const orderId = btn.getAttribute("data-order");
+                if (!orderId) return;
+                window.location.href = `order-details.html?order=${orderId}`;
+            });
+        });
+
+        // لاحقاً: هون فيك تضيف fetch للـ backend لتحديث البيانات كل 15 ثانية
+        /*
+        setInterval(() => {
+          fetch('/api/live-tracking')
+            .then(res => res.json())
+            .then(data => {
+              // TODO: تحديث الـ DOM حسب البيانات
+            });
+        }, 15000);
+        */
+    </script>
+</body>
+
+</html>

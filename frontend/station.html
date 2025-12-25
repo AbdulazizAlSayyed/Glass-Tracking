@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Station</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<script>
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("logout") === "1") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.replace("/index.html?logout=1");
+    }
+
+    if (!user || !token) {
+        window.location.replace("/index.html?logout=1");
+    } else {
+        const current = location.pathname.split("/").pop() || "index.html";
+        if (user.homePage && user.homePage !== current) {
+            window.location.replace("/" + user.homePage);
+        }
+    }
+</script>
+
+
+<body class="station-body">
+    <div class="station-card">
+
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <div>
+                <div class="station-title" id="stationTitle">CUTTING Station</div>
+                <div class="station-subtitle">Select an order, then mark pieces as Done or Broken.</div>
+            </div>
+
+            <div style="text-align:right; font-size:0.75rem; color:#6b7280;">
+                <div id="stationUser">User: Ahmed</div>
+
+                <div style="margin-top:6px; display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                    <span class="badge" id="todayPassedBadge">Today: 32 passed</span>
+
+                    <button type="button" id="logoutBtn" class="btn btn-ghost"
+                        style="padding:6px 10px; font-size:0.8rem;">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" id="tabByGlass" type="button">By glass number</button>
+            <button class="tab" id="tabByOrder" type="button">By order</button>
+        </div>
+
+        <div id="paneByGlass">
+            <div class="field-label">Glass number</div>
+
+            <div style="display:flex; gap:8px;">
+                <input type="text" class="input" id="glassNumberInput" placeholder="e.g. 580-F1-2" autofocus />
+                <button class="btn btn-primary" id="glassFindBtn" type="button">Find</button>
+            </div>
+
+            <div class="piece-details" id="pieceDetails" style="display:none;">
+                <div class="piece-details-header">
+                    <div>
+                        <div class="piece-title" id="pieceTitle">Glass #---</div>
+                        <div class="piece-subtitle" id="pieceSubtitle">Order #--- • Line ---</div>
+                    </div>
+                    <span class="status-pill status-not-started" id="pieceStatusPill">Waiting</span>
+                </div>
+
+                <div class="piece-grid">
+                    <div class="piece-item">
+                        <div class="piece-label">Size</div>
+                        <div class="piece-value" id="pieceSize">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">Type</div>
+                        <div class="piece-value" id="pieceType">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">Current stage</div>
+                        <div class="piece-value" id="pieceStage">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">Notes</div>
+                        <div class="piece-value" id="pieceNotes">—</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button class="btn btn-primary" style="flex:1;" id="pieceDoneBtn" type="button">
+                        DONE / PASS
+                    </button>
+                    <button class="btn" style="flex:1; background:#fee2e2; color:#b91c1c;" id="pieceBrokenBtn"
+                        type="button">
+                        BROKEN
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="paneByOrder" style="display:none;">
+            <div class="field-label">Search order</div>
+            <input type="text" class="input" id="orderSearchInput" placeholder="Type order number (e.g. 580)" />
+
+            <div style="margin-top:10px; font-size:0.8rem; color:#6b7280; margin-bottom:6px;">
+                Orders that currently have pieces in this station:
+            </div>
+
+            <div class="table-wrapper" style="max-height:300px; overflow:auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Pieces</th>
+                            <th>Pending</th>
+                            <th>Due</th>
+                            <th>Open</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <button class="btn" style="margin-top:10px; width:100%; background:#fee2e2; color:#b91c1c;" id="brokenBtn"
+            type="button">
+            Mark as Broken
+        </button>
+
+        <div class="station-status-message info" id="stationStatus">Waiting for input…</div>
+
+        <div class="station-footer">
+            <span id="stationCode">Station: CUT-01</span>
+            <span>Only pieces assigned to this station appear here</span>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="orderModal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="orderModalTitle">Order #---</div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="orderModalMeta">Pieces in this station</div>
+                </div>
+                <button class="modal-close" id="orderModalCloseBtn" type="button">×</button>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+                <input type="text" class="input" id="pieceSearchInput" placeholder="Search glass # داخل الطلب..." />
+                <label
+                    style="display:flex; gap:6px; align-items:center; font-size:0.8rem; color:#6b7280; white-space:nowrap;">
+                    <input type="checkbox" id="pendingOnlyToggle" checked />
+                    Pending only
+                </label>
+            </div>
+
+            <div class="table-wrapper" style="max-height:360px; overflow:auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Glass #</th>
+                            <th>Line</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Done</th>
+                            <th>Broken</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderPiecesBody"></tbody>
+                </table>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <div style="font-size:0.8rem; color:#6b7280;" id="paginationLabel">Showing 0 of 0</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-ghost" id="prevPageBtn" type="button">Prev</button>
+                    <button class="btn btn-primary" id="nextPageBtn" type="button">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="brokenModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Register broken glass</div>
+                    <div style="font-size:0.8rem; color:#6b7280;">This piece will be removed from station queues.</div>
+                </div>
+                <button class="modal-close" id="brokenCloseBtn" type="button">×</button>
+            </div>
+
+            <div style="font-size:0.8rem;">
+                <div class="form-group">
+                    <div class="field-label">Glass number</div>
+                    <input type="text" class="input" id="brokenGlassInput" placeholder="e.g. 580-F1-2" />
+                </div>
+
+                <div class="form-group">
+                    <div class="field-label">Reason</div>
+                    <select class="input" id="brokenReason">
+                        <option>Fell on floor</option>
+                        <option>Broke during work</option>
+                        <option>Wrong size</option>
+                        <option>Scratched / defect</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="field-label">Notes (optional)</div>
+                    <input type="text" class="input" id="brokenNotes" placeholder="Any extra info" />
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
+                <button class="btn btn-ghost" id="brokenCancelBtn" type="button">Cancel</button>
+                <button class="btn" style="background:#b91c1c; color:white;" id="brokenConfirmBtn" type="button">
+                    Confirm broken
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/station.js"></script>
+</body>
+
+</html>

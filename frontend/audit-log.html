@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Glass Tracking – Audit Log</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        /* Small fallback styles (won't break your style.css) */
+        .audit-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .audit-kpi {
+            padding: 10px 12px;
+            border: 1px solid rgba(226, 232, 240, .9);
+            border-radius: 14px;
+            background: #fff;
+        }
+
+        .audit-kpi .kpi-label {
+            color: #6b7280;
+            font-size: .78rem;
+        }
+
+        .audit-kpi .kpi-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+
+        .audit-row-critical {
+            background: #fff7ed;
+        }
+
+        .audit-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: .78rem;
+            border: 1px solid rgba(226, 232, 240, .9);
+            background: #fff;
+        }
+
+        .audit-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .audit-dot.info {
+            background: #3b82f6;
+        }
+
+        .audit-dot.critical {
+            background: #ef4444;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, .55);
+            padding: 18px;
+            z-index: 999;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal {
+            width: min(760px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, .9);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .18);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, .9);
+        }
+
+        .modal-title {
+            font-weight: 800;
+        }
+
+        .modal-close {
+            border: 0;
+            background: transparent;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 10px;
+        }
+
+        .modal-body {
+            padding: 14px 16px;
+            font-size: .9rem;
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(226, 232, 240, .9);
+        }
+
+        .kv:last-child {
+            border-bottom: 0;
+        }
+
+        .kv .k {
+            color: #6b7280;
+            font-size: .82rem;
+        }
+
+        .kv .v {
+            font-weight: 700;
+            color: #111827;
+            word-break: break-word;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: .85rem;
+        }
+
+        /* Make table look clean */
+        .table td,
+        .table th {
+            vertical-align: top;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+                <a href="quality.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Quality</span>
+                </a>
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+                <a href="audit-log.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Audit Log</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Audit Log</div>
+                    <div class="main-subtitle">Who did what, when — orders, pieces, and delivery actions</div>
+                </div>
+                <div class="main-header-right">
+                    <button class="btn btn-ghost" id="clearLogBtn" title="Front-end only">Clear</button>
+                    <button class="btn btn-primary" id="exportCsvBtn">Export CSV</button>
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Overview</div>
+                        <div class="card-subtitle">Quick snapshot for management</div>
+                    </div>
+                </div>
+
+                <div class="audit-grid">
+                    <div class="audit-kpi">
+                        <div class="kpi-label">Total events</div>
+                        <div class="kpi-value" id="kpiTotal">0</div>
+                    </div>
+                    <div class="audit-kpi">
+                        <div class="kpi-label">Critical events</div>
+                        <div class="kpi-value" id="kpiCritical">0</div>
+                    </div>
+                    <div class="audit-kpi">
+                        <div class="kpi-label">Unique users</div>
+                        <div class="kpi-value" id="kpiUsers">0</div>
+                    </div>
+                    <div class="audit-kpi">
+                        <div class="kpi-label">Last event</div>
+                        <div class="kpi-value mono" id="kpiLast">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filters + Table -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Log</div>
+                        <div class="card-subtitle">Filter by date, user, action, entity — then drill down</div>
+                    </div>
+                </div>
+
+                <div class="audit-toolbar">
+                    <div class="tabs" id="quickRangeTabs">
+                        <button class="tab active" data-q="all">All</button>
+                        <button class="tab" data-q="today">Today</button>
+                        <button class="tab" data-q="7d">Last 7 days</button>
+                    </div>
+
+                    <input type="date" class="input" style="max-width: 170px;" id="dateFrom" />
+                    <input type="date" class="input" style="max-width: 170px;" id="dateTo" />
+
+                    <select class="input" style="max-width: 200px;" id="userFilter">
+                        <option value="">User: All</option>
+                    </select>
+
+                    <select class="input" style="max-width: 210px;" id="actionFilter">
+                        <option value="">Action: All</option>
+                        <option value="order_imported">order_imported</option>
+                        <option value="order_activated">order_activated</option>
+                        <option value="piece_done">piece_done</option>
+                        <option value="piece_broken">piece_broken</option>
+                        <option value="delivery_confirmed">delivery_confirmed</option>
+                        <option value="order_paused">order_paused</option>
+                        <option value="order_resumed">order_resumed</option>
+                        <option value="user_created">user_created</option>
+                        <option value="user_disabled">user_disabled</option>
+                    </select>
+
+                    <select class="input" style="max-width: 190px;" id="entityFilter">
+                        <option value="">Entity: All</option>
+                        <option value="order">Order</option>
+                        <option value="piece">Piece</option>
+                        <option value="DN">Delivery Note (DN)</option>
+                        <option value="user">User</option>
+                    </select>
+
+                    <label style="display:flex; align-items:center; gap:6px; font-size:.82rem; color:#374151;">
+                        <input type="checkbox" id="criticalOnly" />
+                        Critical only
+                    </label>
+
+                    <input type="text" class="input" style="flex: 1; min-width: 220px;"
+                        placeholder="Search: order #, glass #, DN, customer, notes…" id="searchInput" />
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width:170px;">Time</th>
+                                <th style="width:170px;">User</th>
+                                <th style="width:200px;">Action</th>
+                                <th style="width:200px;">Entity</th>
+                                <th>Details</th>
+                                <th style="width:120px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditBody">
+                            <!-- JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="station-status-message info" id="auditStatus" style="margin-top:10px;">
+                    Tip: Use “Critical only” to quickly see breakage/delivery problems.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Details Modal -->
+    <div class="modal-backdrop" id="detailsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">Audit Details</div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="modalSubtitle">—</div>
+                </div>
+                <button class="modal-close" id="modalCloseBtn">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- JS -->
+            </div>
+            <div
+                style="display:flex; justify-content:flex-end; gap:8px; padding: 12px 16px; border-top:1px solid rgba(226,232,240,.9);">
+                <button class="btn btn-ghost" id="modalCloseBtn2">Close</button>
+                <button class="btn btn-primary" id="modalOpenBtn" style="display:none;">Open</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================
+           Audit Log (Front-end only)
+           Storage + filters + export
+           ========================= */
+
+        const STORAGE_KEY = "gt_audit_log_v1";
+
+        const auditBody = document.getElementById("auditBody");
+        const auditStatus = document.getElementById("auditStatus");
+
+        // Filters
+        const quickTabs = Array.from(document.querySelectorAll("#quickRangeTabs .tab"));
+        const dateFrom = document.getElementById("dateFrom");
+        const dateTo = document.getElementById("dateTo");
+        const userFilter = document.getElementById("userFilter");
+        const actionFilter = document.getElementById("actionFilter");
+        const entityFilter = document.getElementById("entityFilter");
+        const criticalOnly = document.getElementById("criticalOnly");
+        const searchInput = document.getElementById("searchInput");
+
+        // KPI
+        const kpiTotal = document.getElementById("kpiTotal");
+        const kpiCritical = document.getElementById("kpiCritical");
+        const kpiUsers = document.getElementById("kpiUsers");
+        const kpiLast = document.getElementById("kpiLast");
+
+        // Buttons
+        const exportCsvBtn = document.getElementById("exportCsvBtn");
+        const clearLogBtn = document.getElementById("clearLogBtn");
+
+        // Modal
+        const detailsModal = document.getElementById("detailsModal");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalSubtitle = document.getElementById("modalSubtitle");
+        const modalBody = document.getElementById("modalBody");
+        const modalCloseBtn = document.getElementById("modalCloseBtn");
+        const modalCloseBtn2 = document.getElementById("modalCloseBtn2");
+        const modalOpenBtn = document.getElementById("modalOpenBtn");
+
+        let currentQuick = "all";
+        let allLogs = [];
+
+        function uid() {
+            return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        }
+
+        function nowISO() {
+            return new Date().toISOString();
+        }
+
+        function safeText(s) {
+            return String(s ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;");
+        }
+
+        function fmtTime(iso) {
+            try {
+                const d = new Date(iso);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                const hh = String(d.getHours()).padStart(2, "0");
+                const mi = String(d.getMinutes()).padStart(2, "0");
+                return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+            } catch {
+                return iso || "";
+            }
+        }
+
+        function loadLogs() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            try {
+                const arr = JSON.parse(raw);
+                return Array.isArray(arr) ? arr : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function saveLogs(items) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        }
+
+        function seedIfEmpty(items) {
+            if (items.length) return items;
+
+            const seed = [
+                {
+                    id: uid(),
+                    time: nowISO(),
+                    user: "Amani",
+                    role: "Sales / Order Creator",
+                    action: "order_imported",
+                    entityType: "order",
+                    entityId: "580",
+                    details: "Imported order from Noria as Draft (PRF: 25000641).",
+                    severity: "info",
+                },
+                {
+                    id: uid(),
+                    time: nowISO(),
+                    user: "Ziad",
+                    role: "Production Planner / Intake",
+                    action: "order_activated",
+                    entityType: "order",
+                    entityId: "580",
+                    details: "Activated lines 1,2 for order 580 (Line refs: F1, F2).",
+                    severity: "info",
+                },
+                {
+                    id: uid(),
+                    time: nowISO(),
+                    user: "Ahmed",
+                    role: "Operator",
+                    action: "piece_done",
+                    entityType: "piece",
+                    entityId: "580-F1-003",
+                    details: "Marked 580-F1-003 DONE at Cutting.",
+                    severity: "info",
+                },
+                {
+                    id: uid(),
+                    time: nowISO(),
+                    user: "Ali",
+                    role: "Operator",
+                    action: "piece_broken",
+                    entityType: "piece",
+                    entityId: "580-F1-004",
+                    details: "Marked 580-F1-004 BROKEN at Cutting (Reason: Fell on floor).",
+                    severity: "critical",
+                },
+                {
+                    id: uid(),
+                    time: nowISO(),
+                    user: "Delivery",
+                    role: "Logistics",
+                    action: "delivery_confirmed",
+                    entityType: "DN",
+                    entityId: "DN-0007",
+                    details: "Delivery confirmed DN-0007 for Order 1006 (3 pcs).",
+                    severity: "info",
+                },
+            ];
+
+            saveLogs(seed);
+            return seed;
+        }
+
+        function uniqueUsers(items) {
+            return Array.from(new Set(items.map(x => x.user).filter(Boolean)));
+        }
+
+        function updateUserFilterOptions(items) {
+            const users = uniqueUsers(items).sort((a, b) => a.localeCompare(b));
+            const current = userFilter.value;
+
+            userFilter.innerHTML = `<option value="">User: All</option>` + users
+                .map(u => `<option value="${safeText(u)}">${safeText(u)}</option>`)
+                .join("");
+
+            if (users.includes(current)) userFilter.value = current;
+        }
+
+        function buildActionLabel(action) {
+            // You can beautify later
+            return action || "-";
+        }
+
+        function buildEntityLabel(type, id) {
+            if (!type && !id) return "-";
+            return `${type || "?"}${id ? ": " + id : ""}`;
+        }
+
+        function pillHTML(severity) {
+            if (severity === "critical") {
+                return `<span class="audit-pill"><span class="audit-dot critical"></span>Critical</span>`;
+            }
+            return `<span class="audit-pill"><span class="audit-dot info"></span>Info</span>`;
+        }
+
+        function inDateRange(iso, from, to) {
+            const t = new Date(iso).getTime();
+            if (!Number.isFinite(t)) return false;
+
+            if (from) {
+                const f = new Date(from + "T00:00:00").getTime();
+                if (t < f) return false;
+            }
+            if (to) {
+                const e = new Date(to + "T23:59:59").getTime();
+                if (t > e) return false;
+            }
+            return true;
+        }
+
+        function applyQuickRange() {
+            // sets dateFrom/dateTo based on currentQuick
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            if (currentQuick === "all") {
+                dateFrom.value = "";
+                dateTo.value = "";
+                return;
+            }
+
+            if (currentQuick === "today") {
+                dateFrom.value = todayStr;
+                dateTo.value = todayStr;
+                return;
+            }
+
+            if (currentQuick === "7d") {
+                const d2 = new Date();
+                d2.setDate(d2.getDate() - 6);
+                const y2 = d2.getFullYear();
+                const m2 = String(d2.getMonth() + 1).padStart(2, "0");
+                const day2 = String(d2.getDate()).padStart(2, "0");
+                dateFrom.value = `${y2}-${m2}-${day2}`;
+                dateTo.value = todayStr;
+                return;
+            }
+        }
+
+        function filterLogs(items) {
+            const df = dateFrom.value || "";
+            const dt = dateTo.value || "";
+            const uf = (userFilter.value || "").trim();
+            const af = (actionFilter.value || "").trim();
+            const ef = (entityFilter.value || "").trim();
+            const crit = criticalOnly.checked;
+            const q = (searchInput.value || "").trim().toLowerCase();
+
+            return items.filter(x => {
+                if (!inDateRange(x.time, df, dt)) return false;
+                if (uf && x.user !== uf) return false;
+                if (af && x.action !== af) return false;
+                if (ef && x.entityType !== ef) return false;
+                if (crit && x.severity !== "critical") return false;
+
+                if (q) {
+                    const hay = [
+                        x.user, x.role, x.action, x.entityType, x.entityId, x.details
+                    ].join(" ").toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+        }
+
+        function sortNewest(items) {
+            return [...items].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        }
+
+        function renderKPIs(items) {
+            kpiTotal.textContent = String(items.length);
+            kpiCritical.textContent = String(items.filter(x => x.severity === "critical").length);
+            kpiUsers.textContent = String(uniqueUsers(items).length);
+
+            const last = sortNewest(items)[0];
+            kpiLast.textContent = last ? fmtTime(last.time) : "—";
+        }
+
+        function renderTable(items) {
+            const rows = items.map(x => {
+                const isCritical = x.severity === "critical";
+                const trClass = isCritical ? "audit-row-critical" : "";
+
+                const detailsShort = (x.details || "").length > 80
+                    ? (x.details || "").slice(0, 80) + "…"
+                    : (x.details || "");
+
+                const entity = buildEntityLabel(x.entityType, x.entityId);
+
+                return `
+          <tr class="${trClass}" data-aid="${safeText(x.id)}">
+            <td class="mono">${safeText(fmtTime(x.time))}</td>
+            <td>
+              <div style="font-weight:800;">${safeText(x.user || "-")}</div>
+              <div style="color:#6b7280; font-size:.78rem;">${safeText(x.role || "")}</div>
+            </td>
+            <td>
+              <div style="font-weight:800;">${safeText(buildActionLabel(x.action))}</div>
+              <div style="margin-top:6px;">${pillHTML(x.severity)}</div>
+            </td>
+            <td class="mono">${safeText(entity)}</td>
+            <td>${safeText(detailsShort)}</td>
+            <td>
+              <button class="btn btn-ghost" data-view type="button">View</button>
+            </td>
+          </tr>
+        `;
+            }).join("");
+
+            auditBody.innerHTML = rows || `
+        <tr>
+          <td colspan="6" style="color:#6b7280; font-size:.85rem;">No events match your filters.</td>
+        </tr>
+      `;
+
+            auditStatus.className = "station-status-message info";
+            auditStatus.textContent = `Showing ${items.length} event(s).`;
+        }
+
+        function openModal(item) {
+            modalTitle.textContent = `${item.action || "Audit"} • ${item.entityType || "?"}:${item.entityId || "-"}`;
+            modalSubtitle.textContent = `${item.user || "-"} • ${fmtTime(item.time)} • ${item.role || ""}`;
+
+            modalBody.innerHTML = `
+        <div class="kv"><div class="k">Time</div><div class="v mono">${safeText(fmtTime(item.time))}</div></div>
+        <div class="kv"><div class="k">User</div><div class="v">${safeText(item.user || "-")}</div></div>
+        <div class="kv"><div class="k">Role</div><div class="v">${safeText(item.role || "-")}</div></div>
+        <div class="kv"><div class="k">Action</div><div class="v mono">${safeText(item.action || "-")}</div></div>
+        <div class="kv"><div class="k">Entity</div><div class="v mono">${safeText(buildEntityLabel(item.entityType, item.entityId))}</div></div>
+        <div class="kv"><div class="k">Severity</div><div class="v">${safeText(item.severity || "info")}</div></div>
+        <div class="kv"><div class="k">Details</div><div class="v">${safeText(item.details || "")}</div></div>
+      `;
+
+            // Open button routing
+            modalOpenBtn.style.display = "none";
+            modalOpenBtn.onclick = null;
+
+            if (item.entityType === "order" && item.entityId) {
+                modalOpenBtn.style.display = "inline-flex";
+                modalOpenBtn.textContent = "Open order";
+                modalOpenBtn.onclick = () => {
+                    window.location.href = `order-details.html?order=${encodeURIComponent(item.entityId)}`;
+                };
+            } else if (item.entityType === "piece" && item.entityId) {
+                // piece has order prefix: 580-F1-003 => open order 580
+                const orderGuess = String(item.entityId).split("-")[0];
+                modalOpenBtn.style.display = "inline-flex";
+                modalOpenBtn.textContent = "Open order";
+                modalOpenBtn.onclick = () => {
+                    window.location.href = `order-details.html?order=${encodeURIComponent(orderGuess)}`;
+                };
+            }
+
+            detailsModal.classList.add("active");
+        }
+
+        function closeModal() {
+            detailsModal.classList.remove("active");
+        }
+
+        modalCloseBtn.addEventListener("click", closeModal);
+        modalCloseBtn2.addEventListener("click", closeModal);
+        detailsModal.addEventListener("click", (e) => {
+            if (e.target === detailsModal) closeModal();
+        });
+
+        function renderAll() {
+            allLogs = seedIfEmpty(loadLogs());
+            updateUserFilterOptions(allLogs);
+
+            renderKPIs(allLogs);
+
+            const filtered = sortNewest(filterLogs(allLogs));
+            renderTable(filtered);
+        }
+
+        // Table click -> view modal
+        auditBody.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-view]");
+            if (!btn) return;
+
+            const tr = btn.closest("tr[data-aid]");
+            if (!tr) return;
+
+            const id = tr.dataset.aid;
+            const item = loadLogs().find(x => x.id === id);
+            if (!item) return;
+
+            openModal(item);
+        });
+
+        // Filters events
+        [dateFrom, dateTo, userFilter, actionFilter, entityFilter, criticalOnly, searchInput].forEach(el => {
+            el.addEventListener("input", renderAll);
+            el.addEventListener("change", renderAll);
+        });
+
+        // Quick tabs
+        quickTabs.forEach(t => {
+            t.addEventListener("click", () => {
+                quickTabs.forEach(x => x.classList.remove("active"));
+                t.classList.add("active");
+                currentQuick = t.dataset.q || "all";
+                applyQuickRange();
+                renderAll();
+            });
+        });
+
+        // Export CSV
+        function toCSV(items) {
+            const header = ["time", "user", "role", "action", "entityType", "entityId", "severity", "details"];
+            const rows = items.map(x => header.map(h => {
+                const v = (x[h] ?? "");
+                const s = String(v).replaceAll('"', '""');
+                return `"${s}"`;
+            }).join(","));
+            return header.join(",") + "\n" + rows.join("\n");
+        }
+
+        exportCsvBtn.addEventListener("click", () => {
+            const filtered = sortNewest(filterLogs(seedIfEmpty(loadLogs())));
+            const csv = toCSV(filtered);
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `audit_log_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            auditStatus.className = "station-status-message success";
+            auditStatus.textContent = "✅ CSV exported (filtered view).";
+        });
+
+        // Clear log (front only)
+        clearLogBtn.addEventListener("click", () => {
+            const ok = confirm("Clear ALL audit logs? (Front-end only)");
+            if (!ok) return;
+            saveLogs([]);
+            renderAll();
+            auditStatus.className = "station-status-message info";
+            auditStatus.textContent = "Audit log cleared (seed will re-appear if empty).";
+        });
+
+        // Public API to add logs from other pages
+        window.GTAudit = {
+            add(payload) {
+                const items = loadLogs();
+                const entry = {
+                    id: uid(),
+                    time: payload?.time || nowISO(),
+                    user: payload?.user || "System",
+                    role: payload?.role || "",
+                    action: payload?.action || "info",
+                    entityType: payload?.entityType || "",
+                    entityId: payload?.entityId || "",
+                    details: payload?.details || "",
+                    severity: payload?.severity || "info", // "info" | "critical"
+                };
+                items.push(entry);
+                saveLogs(items);
+                renderAll();
+                return entry.id;
+            }
+        };
+
+        // Init
+        renderAll();
+    </script>
+</body>
+
+</html>

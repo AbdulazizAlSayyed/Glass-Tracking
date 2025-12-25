@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Glass Tracking – Workflow</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        .muted {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .row .input {
+            max-width: 280px;
+        }
+
+        .list {
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-title {
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+
+        .item-sub {
+            color: #6b7280;
+            font-size: 0.8rem;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            background: #f3f4f6;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .danger {
+            color: #b91c1c;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+                <a href="quality.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Quality</span>
+                </a>
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+
+                <a href="workflow.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Workflow</span>
+                </a>
+
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Workflow / Stations</div>
+                    <div class="main-subtitle">
+                        ترتيب محطات المصنع + قائمة أسباب الكسر (للـ Quality & Reports)
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    <span class="pill" id="saveStatus">Not saved</span>
+                    <button class="btn btn-primary" id="saveBtn">Save</button>
+                </div>
+            </header>
+
+            <!-- Stages -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Stages (order matters)</div>
+                        <div class="card-subtitle">
+                            هذا الترتيب هو اللي بيظهر بـ Live Tracking وبيحدد انتقال الزجاج بين المحطات.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <input class="input" id="newStageInput" placeholder="Add new stage (e.g. Washing / Packing)" />
+                    <button class="btn btn-primary" id="addStageBtn" type="button">Add stage</button>
+                </div>
+
+                <div class="list" id="stagesList"></div>
+
+                <div class="muted" style="margin-top:10px;">
+                    استخدم ↑ ↓ لتغيير ترتيب المحطات.
+                </div>
+            </section>
+
+            <!-- Broken reasons -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Broken reasons</div>
+                        <div class="card-subtitle">
+                            العامل بيختار سبب الكسر من هون. هيدا بيطلع بالتقارير (حسب السبب/المحطة/العامل/الوقت).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <input class="input" id="newReasonInput" placeholder="Add reason (e.g. Fell on floor)" />
+                    <button class="btn btn-primary" id="addReasonBtn" type="button">Add reason</button>
+                </div>
+
+                <div class="list" id="reasonsList"></div>
+
+                <div class="muted" style="margin-top:10px;">
+                    ملاحظة: هالصفحة Front فقط وبتحفظ بـ LocalStorage. بعدين منربطها بالـ DB وصلاحيات Admin/Manager.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const WORKFLOW_KEY = "gt_workflow_v2";
+
+        const DEFAULT_WORKFLOW = {
+            stages: ["Cutting", "Grinding", "Washing", "Furnace", "Double", "Lamination", "Packing", "Delivery"],
+            brokenReasons: ["Fell on floor", "Scratch", "Edge crack", "Wrong handling", "Machine issue"]
+        };
+
+        function loadWorkflow() {
+            const raw = localStorage.getItem(WORKFLOW_KEY);
+            if (!raw) {
+                localStorage.setItem(WORKFLOW_KEY, JSON.stringify(DEFAULT_WORKFLOW));
+                return structuredClone(DEFAULT_WORKFLOW);
+            }
+            try { return JSON.parse(raw); } catch { return structuredClone(DEFAULT_WORKFLOW); }
+        }
+
+        function saveWorkflow(data) {
+            localStorage.setItem(WORKFLOW_KEY, JSON.stringify(data));
+        }
+
+        function safeText(s) {
+            return String(s ?? "").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+        }
+
+        const saveBtn = document.getElementById("saveBtn");
+        const saveStatus = document.getElementById("saveStatus");
+
+        const newStageInput = document.getElementById("newStageInput");
+        const addStageBtn = document.getElementById("addStageBtn");
+        const stagesList = document.getElementById("stagesList");
+
+        const newReasonInput = document.getElementById("newReasonInput");
+        const addReasonBtn = document.getElementById("addReasonBtn");
+        const reasonsList = document.getElementById("reasonsList");
+
+        let workflow = loadWorkflow();
+        let dirty = false;
+
+        function markDirty() {
+            dirty = true;
+            saveStatus.textContent = "Not saved";
+        }
+
+        function markSaved() {
+            dirty = false;
+            saveStatus.textContent = "Saved ✅";
+        }
+
+        function renderStages() {
+            stagesList.innerHTML = "";
+
+            workflow.stages.forEach((stage, idx) => {
+                const div = document.createElement("div");
+                div.className = "list-item";
+                div.innerHTML = `
+          <div class="item-left">
+            <div class="item-title">${safeText(stage)}</div>
+            <div class="item-sub">Position: ${idx + 1}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost" data-stage-act="up" data-idx="${idx}">↑</button>
+            <button class="btn btn-ghost" data-stage-act="down" data-idx="${idx}">↓</button>
+            <button class="btn btn-ghost danger" data-stage-act="remove" data-idx="${idx}">Remove</button>
+          </div>
+        `;
+                stagesList.appendChild(div);
+            });
+
+            if (!workflow.stages.length) {
+                stagesList.innerHTML = `<div class="list-item"><div class="muted">No stages defined.</div></div>`;
+            }
+        }
+
+        function renderReasons() {
+            reasonsList.innerHTML = "";
+
+            workflow.brokenReasons.forEach((reason, idx) => {
+                const div = document.createElement("div");
+                div.className = "list-item";
+                div.innerHTML = `
+          <div class="item-left">
+            <div class="item-title">${safeText(reason)}</div>
+            <div class="item-sub">Used in Broken Report</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost danger" data-reason-remove="${idx}">Remove</button>
+          </div>
+        `;
+                reasonsList.appendChild(div);
+            });
+
+            if (!workflow.brokenReasons.length) {
+                reasonsList.innerHTML = `<div class="list-item"><div class="muted">No reasons defined.</div></div>`;
+            }
+        }
+
+        // Add stage
+        addStageBtn.addEventListener("click", () => {
+            const name = (newStageInput.value || "").trim();
+            if (!name) return;
+
+            const exists = workflow.stages.some(s => s.toLowerCase() === name.toLowerCase());
+            if (exists) { alert("Stage already exists"); return; }
+
+            workflow.stages.push(name);
+            newStageInput.value = "";
+            markDirty();
+            renderStages();
+        });
+
+        // Stage actions
+        stagesList.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-stage-act]");
+            if (!btn) return;
+
+            const act = btn.dataset.stageAct;
+            const idx = Number(btn.dataset.idx);
+            if (Number.isNaN(idx)) return;
+
+            if (act === "up" && idx > 0) {
+                [workflow.stages[idx - 1], workflow.stages[idx]] = [workflow.stages[idx], workflow.stages[idx - 1]];
+                markDirty(); renderStages();
+            }
+
+            if (act === "down" && idx < workflow.stages.length - 1) {
+                [workflow.stages[idx + 1], workflow.stages[idx]] = [workflow.stages[idx], workflow.stages[idx + 1]];
+                markDirty(); renderStages();
+            }
+
+            if (act === "remove") {
+                const stage = workflow.stages[idx];
+                const ok = confirm(`Remove stage "${stage}" ?`);
+                if (!ok) return;
+
+                workflow.stages.splice(idx, 1);
+                markDirty();
+                renderStages();
+            }
+        });
+
+        // Add reason
+        addReasonBtn.addEventListener("click", () => {
+            const name = (newReasonInput.value || "").trim();
+            if (!name) return;
+
+            const exists = workflow.brokenReasons.some(r => r.toLowerCase() === name.toLowerCase());
+            if (exists) { alert("Reason already exists"); return; }
+
+            workflow.brokenReasons.push(name);
+            newReasonInput.value = "";
+            markDirty();
+            renderReasons();
+        });
+
+        // Remove reason
+        reasonsList.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-reason-remove]");
+            if (!btn) return;
+
+            const idx = Number(btn.dataset.reasonRemove);
+            const ok = confirm(`Remove reason "${workflow.brokenReasons[idx]}" ?`);
+            if (!ok) return;
+
+            workflow.brokenReasons.splice(idx, 1);
+            markDirty();
+            renderReasons();
+        });
+
+        // Save
+        saveBtn.addEventListener("click", () => {
+            if (!workflow.stages.length) {
+                alert("You must have at least 1 stage.");
+                return;
+            }
+            saveWorkflow(workflow);
+            markSaved();
+        });
+
+        window.addEventListener("beforeunload", (e) => {
+            if (!dirty) return;
+            e.preventDefault();
+            e.returnValue = "";
+        });
+
+        // Init
+        renderStages();
+        renderReasons();
+        markSaved();
+    </script>
+</body>
+
+</html>

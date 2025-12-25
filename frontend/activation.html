@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Intake / Planning (Ziad)</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<script>
+    (() => {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const authToken = localStorage.getItem("token");
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.get("logout") === "1") {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.replace("/index.html?logout=1");
+            return;
+        }
+
+        if (!user || !authToken) {
+            window.location.replace("/index.html?logout=1");
+            return;
+        }
+
+        const current = location.pathname.split("/").pop() || "index.html";
+
+        // ✅ نفس منطق import-orders
+        if (user.homePage && user.homePage !== current) {
+            window.location.replace("/" + user.homePage);
+        }
+    })();
+</script>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Reports</span>
+                </a>
+                <a href="import-orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Import (Amani)</span>
+                </a>
+
+                <!-- نفس الصفحة بس اسمها Intake -->
+                <a href="activation.html" class="nav-item active">
+                    <div class="nav-item-icon"></div><span>Intake / Planning (Ziad)</span>
+                </a>
+
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Users</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Production Intake & Planning</div>
+                    <div class="main-subtitle">
+                        Ziad – choose which orders/lines go to factory now (creates pieces & pushes to CUTTING queue).
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    <span class="chip">User: Ziad</span>
+                </div>
+            </header>
+
+            <!-- Status line (like station) -->
+            <div class="station-status-message info" id="plannerStatus">Waiting for action…</div>
+
+            <!-- KPIs -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Today overview</div>
+                        <div class="card-subtitle">Intake queue summary</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div class="stat-label">Draft waiting intake</div>
+                        <div class="stat-value" id="kpiDraft">0</div>
+                        <div class="stat-chip">Orders</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Active in production</div>
+                        <div class="stat-value" id="kpiActive">0</div>
+                        <div class="stat-chip">Orders</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Paused</div>
+                        <div class="stat-value" id="kpiPaused">0</div>
+                        <div class="stat-chip">Orders</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Pieces sent today</div>
+                        <div class="stat-value" id="kpiPieces">0</div>
+                        <div class="stat-chip">Pieces</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filters -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Filters</div>
+                        <div class="card-subtitle">Search by order / client / PRF</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:0.85rem;">
+                    <select class="input" style="max-width:200px;" id="statusFilter">
+                        <option value="all">Status: All</option>
+                        <option value="draft">Draft</option>
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                        <option value="completed">Completed</option>
+                    </select>
+
+                    <input type="text" class="input" style="max-width:260px;" id="searchInput"
+                        placeholder="Order # / Client / PRF" />
+
+                    <label style="display:flex; align-items:center; gap:8px; color:#6b7280;">
+                        <input type="checkbox" id="draftOnlyToggle" checked />
+                        Show only Draft waiting intake
+                    </label>
+                </div>
+            </section>
+
+            <!-- Orders table -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Orders</div>
+                        <div class="card-subtitle">Open an order → choose lines/qty → Send to Factory</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Client</th>
+                                <th>PRF</th>
+                                <th>Import date</th>
+                                <th>Delivery</th>
+                                <th>Lines</th>
+                                <th>Activated lines</th>
+                                <th>Status</th>
+                                <th style="min-width:220px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersBody">
+                            <!-- injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Review / Planning Modal -->
+    <div class="modal-backdrop" id="reviewModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Plan intake for Order <span id="modalOrderId">—</span></div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="modalMeta">—</div>
+                </div>
+                <button class="modal-close" id="closeModalBtn">×</button>
+            </div>
+
+            <div style="font-size:0.8rem; margin-bottom:8px; color:#6b7280;">
+                Select lines + qty to activate now (this creates pieces & sends them to CUTTING queue).
+            </div>
+
+            <div class="station-status-message info" id="modalStatus">Tip: you can activate partially (qty less than
+                total).</div>
+
+            <div class="table-wrapper" style="max-height:280px; overflow:auto; margin-top:8px;">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Line</th>
+                            <th>Ref</th>
+                            <th>Description</th>
+                            <th>Total Qty</th>
+                            <th>Already activated</th>
+                            <th>Activate now</th>
+                            <th>Priority</th>
+                            <th>Go?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linesBody">
+                        <!-- injected -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;">
+                <div style="font-size:0.8rem; color:#6b7280;">
+                    <span id="modalTotals">—</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+                    <button class="btn btn-primary" id="activateBtn">Send to Factory</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/intake.js"></script>
+</body>
+
+</html>

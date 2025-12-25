@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Glass Tracking – Users</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        /* Simple modal + small helpers */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .toolbar .input {
+            max-width: 260px;
+        }
+
+        .toolbar-right {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            background: #f3f4f6;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            z-index: 9999;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal {
+            width: min(720px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+            overflow: hidden;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .modal-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-title {
+            font-weight: 800;
+            font-size: 1rem;
+        }
+
+        .modal-body {
+            padding: 14px 16px;
+        }
+
+        .modal-footer {
+            padding: 14px 16px;
+            border-top: 1px solid rgba(226, 232, 240, 0.9);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        @media (max-width: 720px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .field label {
+            display: block;
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .danger-text {
+            color: #b91c1c;
+            font-size: 0.85rem;
+        }
+
+        .table td:last-child,
+        .table th:last-child {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+
+                <a href="users.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+
+                <a href="quality.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Quality</span>
+                </a>
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+
+                <!-- ✅ new page for supervisor config -->
+                <a href="workflow.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Workflow</span>
+                </a>
+
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Users & Roles</div>
+                    <div class="main-subtitle">Add / edit / disable users • assign station • reset password</div>
+                </div>
+                <div class="main-header-right">
+                    <button class="btn btn-primary" id="addUserBtn">+ Add user</button>
+                </div>
+            </header>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">All users</div>
+                        <div class="card-subtitle">Roles like Admin, Supervisor, Operator, Viewer</div>
+                    </div>
+                </div>
+
+                <!-- toolbar -->
+                <div class="toolbar">
+                    <input class="input" id="searchInput" placeholder="Search username / name..." />
+                    <select class="input" id="roleFilter" style="max-width:200px;">
+                        <option value="all">Role: All</option>
+                    </select>
+                    <select class="input" id="stationFilter" style="max-width:220px;">
+                        <option value="all">Station: All</option>
+                    </select>
+
+                    <div class="toolbar-right">
+                        <span class="chip" id="totalChip">Total: 0</span>
+                        <button class="btn btn-ghost" id="exportCsvBtn" type="button">Export CSV</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Full name</th>
+                                <th>Role</th>
+                                <th>Station</th>
+                                <th>Status</th>
+                                <th>Last login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="muted" style="margin-top:10px;">
+                    Notes: Operators must have a station. Admin/Supervisor can be station = "–".
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-backdrop" id="userModalBackdrop" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">Add user</div>
+                    <div class="muted" id="modalSubtitle">Create a user account and assign a role.</div>
+                </div>
+                <button class="btn btn-ghost" id="closeModalBtn" type="button">Close</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="grid">
+                    <div class="field">
+                        <label>Username *</label>
+                        <input class="input" id="fUsername" placeholder="e.g. cutting.operator" />
+                    </div>
+
+                    <div class="field">
+                        <label>Full name *</label>
+                        <input class="input" id="fFullname" placeholder="e.g. Ali Ahmad" />
+                    </div>
+
+                    <div class="field">
+                        <label>Role *</label>
+                        <select class="input" id="fRole"></select>
+                    </div>
+
+                    <div class="field">
+                        <label>Station</label>
+                        <select class="input" id="fStation"></select>
+                    </div>
+
+                    <div class="field">
+                        <label>Password (for new user)</label>
+                        <input class="input" id="fPassword" placeholder="Leave empty = auto-generate" />
+                        <div class="muted">Only used when creating user. Edit mode won’t show current password.</div>
+                    </div>
+
+                    <div class="field">
+                        <label>Status</label>
+                        <select class="input" id="fStatus">
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                        <div class="muted">Disabled users cannot login.</div>
+                    </div>
+                </div>
+
+                <div class="danger-text" id="formError" style="margin-top:10px; display:none;"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="deleteUserBtn" type="button" style="display:none;">Delete</button>
+                <button class="btn btn-ghost" id="resetPassBtn" type="button" style="display:none;">Reset
+                    password</button>
+                <button class="btn btn-primary" id="saveUserBtn" type="button">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =======================
+           Storage keys
+        ======================== */
+        const USERS_KEY = "gt_users_v1";
+        const WORKFLOW_KEY = "gt_workflow_v1";
+
+        /* =======================
+           Defaults
+        ======================== */
+        const DEFAULT_WORKFLOW = {
+            stages: ["Cutting", "Grinding", "Washing", "Furnace", "Double", "Lamination", "Packing", "Delivery"],
+            finalStageBeforeDelivery: "Packing",
+            brokenReasons: ["Fell on floor", "Scratch", "Edge crack", "Wrong handling", "Machine issue"],
+            shifts: ["Morning", "Evening", "Night"]
+        };
+
+        const ROLES = [
+            { value: "Admin", label: "Admin (Office)" },
+            { value: "Supervisor", label: "Supervisor (Factory)" },
+            { value: "Operator", label: "Operator (Station worker)" },
+            { value: "Viewer", label: "Viewer (Read only)" },
+        ];
+
+        function loadWorkflow() {
+            const raw = localStorage.getItem(WORKFLOW_KEY);
+            if (!raw) {
+                localStorage.setItem(WORKFLOW_KEY, JSON.stringify(DEFAULT_WORKFLOW));
+                return structuredClone(DEFAULT_WORKFLOW);
+            }
+            try { return JSON.parse(raw); } catch { return structuredClone(DEFAULT_WORKFLOW); }
+        }
+
+        function loadUsers() {
+            const raw = localStorage.getItem(USERS_KEY);
+            if (!raw) {
+                const seed = [
+                    { id: crypto.randomUUID(), username: "admin", fullname: "Factory Admin", role: "Admin", station: "–", status: "active", lastLogin: "2025-12-18 08:00", password: "admin123" },
+                    { id: crypto.randomUUID(), username: "cutting.operator", fullname: "Ali Ahmad", role: "Operator", station: "Cutting", status: "active", lastLogin: "2025-12-18 09:10", password: "123456" },
+                    { id: crypto.randomUUID(), username: "furnace.operator", fullname: "Mohammad Saleh", role: "Operator", station: "Furnace", status: "disabled", lastLogin: "2025-12-10 14:30", password: "123456" },
+                    { id: crypto.randomUUID(), username: "supervisor", fullname: "Factory Supervisor", role: "Supervisor", station: "–", status: "active", lastLogin: "2025-12-18 07:55", password: "super123" },
+                ];
+                localStorage.setItem(USERS_KEY, JSON.stringify(seed));
+                return seed;
+            }
+            try { return JSON.parse(raw); } catch { return []; }
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        }
+
+        function safeText(s) {
+            return String(s ?? "").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+        }
+
+        function nowString() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mi = String(d.getMinutes()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+        }
+
+        function genTempPassword() {
+            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#";
+            let out = "";
+            for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+            return out;
+        }
+
+        /* =======================
+           UI elements
+        ======================== */
+        const usersTbody = document.getElementById("usersTbody");
+        const addUserBtn = document.getElementById("addUserBtn");
+        const searchInput = document.getElementById("searchInput");
+        const roleFilter = document.getElementById("roleFilter");
+        const stationFilter = document.getElementById("stationFilter");
+        const totalChip = document.getElementById("totalChip");
+        const exportCsvBtn = document.getElementById("exportCsvBtn");
+
+        // modal
+        const modalBackdrop = document.getElementById("userModalBackdrop");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalSubtitle = document.getElementById("modalSubtitle");
+
+        const fUsername = document.getElementById("fUsername");
+        const fFullname = document.getElementById("fFullname");
+        const fRole = document.getElementById("fRole");
+        const fStation = document.getElementById("fStation");
+        const fPassword = document.getElementById("fPassword");
+        const fStatus = document.getElementById("fStatus");
+
+        const formError = document.getElementById("formError");
+        const saveUserBtn = document.getElementById("saveUserBtn");
+        const deleteUserBtn = document.getElementById("deleteUserBtn");
+        const resetPassBtn = document.getElementById("resetPassBtn");
+
+        /* =======================
+           State
+        ======================== */
+        let workflow = loadWorkflow();
+        let users = loadUsers();
+        let editingId = null;
+
+        /* =======================
+           Fill dropdowns
+        ======================== */
+        function fillRoleDropdowns() {
+            // filter
+            roleFilter.innerHTML = `<option value="all">Role: All</option>`;
+            ROLES.forEach(r => {
+                const o = document.createElement("option");
+                o.value = r.value;
+                o.textContent = r.value;
+                roleFilter.appendChild(o);
+            });
+
+            // form role
+            fRole.innerHTML = "";
+            ROLES.forEach(r => {
+                const o = document.createElement("option");
+                o.value = r.value;
+                o.textContent = r.label;
+                fRole.appendChild(o);
+            });
+        }
+
+        function fillStationDropdowns() {
+            stationFilter.innerHTML = `<option value="all">Station: All</option>`;
+            workflow.stages.forEach(s => {
+                const o = document.createElement("option");
+                o.value = s;
+                o.textContent = s;
+                stationFilter.appendChild(o);
+            });
+
+            fStation.innerHTML = "";
+            const dash = document.createElement("option");
+            dash.value = "–";
+            dash.textContent = "–";
+            fStation.appendChild(dash);
+
+            workflow.stages.forEach(s => {
+                const o = document.createElement("option");
+                o.value = s;
+                o.textContent = s;
+                fStation.appendChild(o);
+            });
+        }
+
+        function roleNeedsStation(role) {
+            return role === "Operator";
+        }
+
+        function syncStationEnable() {
+            const role = fRole.value;
+            if (roleNeedsStation(role)) {
+                fStation.disabled = false;
+                if (fStation.value === "–") fStation.value = workflow.stages[0] || "Cutting";
+            } else {
+                fStation.value = "–";
+                fStation.disabled = true;
+            }
+        }
+
+        fRole.addEventListener("change", syncStationEnable);
+
+        /* =======================
+           Render table
+        ======================== */
+        function statusPillHtml(status) {
+            if (status === "active") return `<span class="status-pill status-completed">Active</span>`;
+            return `<span class="status-pill status-not-started">Disabled</span>`;
+        }
+
+        function render() {
+            // refresh workflow in case it changed from workflow.html
+            workflow = loadWorkflow();
+            fillStationDropdowns();
+
+            const q = (searchInput.value || "").trim().toLowerCase();
+            const rf = roleFilter.value;
+            const sf = stationFilter.value;
+
+            let filtered = users.slice();
+
+            if (q) {
+                filtered = filtered.filter(u =>
+                    (u.username || "").toLowerCase().includes(q) ||
+                    (u.fullname || "").toLowerCase().includes(q)
+                );
+            }
+            if (rf !== "all") filtered = filtered.filter(u => u.role === rf);
+            if (sf !== "all") filtered = filtered.filter(u => u.station === sf);
+
+            totalChip.textContent = `Total: ${filtered.length}`;
+
+            usersTbody.innerHTML = "";
+            filtered.forEach(u => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${safeText(u.username)}</td>
+                    <td>${safeText(u.fullname)}</td>
+                    <td>${safeText(u.role)}</td>
+                    <td>${safeText(u.station)}</td>
+                    <td>${statusPillHtml(u.status)}</td>
+                    <td>${safeText(u.lastLogin || "—")}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn btn-ghost" data-action="edit" data-id="${u.id}">Edit</button>
+                            <button class="btn btn-ghost" data-action="toggle" data-id="${u.id}">
+                                ${u.status === "active" ? "Disable" : "Enable"}
+                            </button>
+                            <button class="btn btn-ghost" data-action="reset" data-id="${u.id}">Reset password</button>
+                        </div>
+                    </td>
+                `;
+                usersTbody.appendChild(tr);
+            });
+
+            if (!filtered.length) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="7" class="muted">No users found.</td>`;
+                usersTbody.appendChild(tr);
+            }
+        }
+
+        /* =======================
+           Modal open/close
+        ======================== */
+        function openModal(mode, user = null) {
+            formError.style.display = "none";
+            formError.textContent = "";
+            fPassword.value = "";
+
+            if (mode === "add") {
+                editingId = null;
+                modalTitle.textContent = "Add user";
+                modalSubtitle.textContent = "Create a user account and assign a role/station.";
+                deleteUserBtn.style.display = "none";
+                resetPassBtn.style.display = "none";
+
+                fUsername.disabled = false;
+                fUsername.value = "";
+                fFullname.value = "";
+                fRole.value = "Operator";
+                fStation.value = workflow.stages[0] || "Cutting";
+                fStatus.value = "active";
+                syncStationEnable();
+            } else {
+                editingId = user.id;
+                modalTitle.textContent = `Edit user: ${user.username}`;
+                modalSubtitle.textContent = "Update role/station, disable account, or reset password.";
+                deleteUserBtn.style.display = "inline-flex";
+                resetPassBtn.style.display = "inline-flex";
+
+                fUsername.disabled = true;
+                fUsername.value = user.username;
+                fFullname.value = user.fullname;
+                fRole.value = user.role;
+                fStation.value = user.station || "–";
+                fStatus.value = user.status || "active";
+                syncStationEnable();
+            }
+
+            modalBackdrop.classList.add("open");
+            modalBackdrop.setAttribute("aria-hidden", "false");
+        }
+
+        function closeModal() {
+            modalBackdrop.classList.remove("open");
+            modalBackdrop.setAttribute("aria-hidden", "true");
+        }
+
+        closeModalBtn.addEventListener("click", closeModal);
+        modalBackdrop.addEventListener("click", (e) => {
+            if (e.target === modalBackdrop) closeModal();
+        });
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeModal();
+        });
+
+        /* =======================
+           Add / Edit
+        ======================== */
+        addUserBtn.addEventListener("click", () => openModal("add"));
+
+        saveUserBtn.addEventListener("click", () => {
+            const username = (fUsername.value || "").trim();
+            const fullname = (fFullname.value || "").trim();
+            const role = fRole.value;
+            const station = fStation.value;
+            const status = fStatus.value;
+
+            if (!username || !fullname) {
+                formError.textContent = "Username and Full name are required.";
+                formError.style.display = "block";
+                return;
+            }
+
+            if (!editingId) {
+                // create
+                const exists = users.some(u => (u.username || "").toLowerCase() === username.toLowerCase());
+                if (exists) {
+                    formError.textContent = "Username already exists. Choose another.";
+                    formError.style.display = "block";
+                    return;
+                }
+
+                if (roleNeedsStation(role) && (station === "–" || !station)) {
+                    formError.textContent = "Operator must have a station.";
+                    formError.style.display = "block";
+                    return;
+                }
+
+                const pass = (fPassword.value || "").trim() || genTempPassword();
+
+                users.unshift({
+                    id: crypto.randomUUID(),
+                    username,
+                    fullname,
+                    role,
+                    station: roleNeedsStation(role) ? station : "–",
+                    status,
+                    lastLogin: "—",
+                    password: pass
+                });
+
+                saveUsers(users);
+                closeModal();
+                render();
+
+                alert(`User created ✅\nUsername: ${username}\nTemporary password: ${pass}`);
+                return;
+            }
+
+            // update
+            const idx = users.findIndex(u => u.id === editingId);
+            if (idx === -1) return;
+
+            if (roleNeedsStation(role) && (station === "–" || !station)) {
+                formError.textContent = "Operator must have a station.";
+                formError.style.display = "block";
+                return;
+            }
+
+            users[idx].fullname = fullname;
+            users[idx].role = role;
+            users[idx].station = roleNeedsStation(role) ? station : "–";
+            users[idx].status = status;
+
+            saveUsers(users);
+            closeModal();
+            render();
+        });
+
+        deleteUserBtn.addEventListener("click", () => {
+            if (!editingId) return;
+            const u = users.find(x => x.id === editingId);
+            if (!u) return;
+
+            const ok = confirm(`Delete user "${u.username}" ?`);
+            if (!ok) return;
+
+            users = users.filter(x => x.id !== editingId);
+            saveUsers(users);
+            closeModal();
+            render();
+        });
+
+        resetPassBtn.addEventListener("click", () => {
+            if (!editingId) return;
+            const idx = users.findIndex(u => u.id === editingId);
+            if (idx === -1) return;
+
+            const newPass = genTempPassword();
+            users[idx].password = newPass;
+            saveUsers(users);
+
+            alert(`Password reset ✅\nUser: ${users[idx].username}\nNew temporary password: ${newPass}`);
+        });
+
+        /* =======================
+           Table actions
+        ======================== */
+        usersTbody.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-action]");
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            const u = users.find(x => x.id === id);
+            if (!u) return;
+
+            if (action === "edit") {
+                openModal("edit", u);
+                return;
+            }
+
+            if (action === "toggle") {
+                u.status = (u.status === "active") ? "disabled" : "active";
+                saveUsers(users);
+                render();
+                return;
+            }
+
+            if (action === "reset") {
+                const ok = confirm(`Reset password for "${u.username}" ?`);
+                if (!ok) return;
+                u.password = genTempPassword();
+                saveUsers(users);
+                alert(`New password for ${u.username}: ${u.password}`);
+                return;
+            }
+        });
+
+        /* =======================
+           Filters + export
+        ======================== */
+        searchInput.addEventListener("input", render);
+        roleFilter.addEventListener("change", render);
+        stationFilter.addEventListener("change", render);
+
+        exportCsvBtn.addEventListener("click", () => {
+            const lines = [];
+            lines.push("username,full_name,role,station,status,last_login");
+            users.forEach(u => {
+                lines.push([
+                    `"${String(u.username).replaceAll('"', '""')}"`,
+                    `"${String(u.fullname).replaceAll('"', '""')}"`,
+                    `"${String(u.role).replaceAll('"', '""')}"`,
+                    `"${String(u.station).replaceAll('"', '""')}"`,
+                    `"${String(u.status).replaceAll('"', '""')}"`,
+                    `"${String(u.lastLogin || "—").replaceAll('"', '""')}"`
+                ].join(","));
+            });
+
+            const csv = lines.join("\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `users_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        /* =======================
+           Init
+        ======================== */
+        fillRoleDropdowns();
+        fillStationDropdowns();
+        render();
+    </script>
+</body>
+
+</html>

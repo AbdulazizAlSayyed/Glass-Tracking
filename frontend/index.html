@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Login</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="login-shell">
+        <div class="login-card">
+            <h1 class="login-title">Glass Tracking</h1>
+            <p class="login-subtitle">Sign in to continue</p>
+
+            <form id="loginForm" class="login-form">
+                <label class="input-label">
+                    Username
+                    <input type="text" id="username" class="input" autocomplete="username" required />
+                </label>
+
+                <label class="input-label">
+                    Password
+                    <input type="password" id="password" class="input" autocomplete="current-password" required />
+                </label>
+
+                <div id="loginError" style="color:#dc2626; font-size:0.85rem; min-height:1.2rem;"></div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        async function doLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const errorEl = document.getElementById("loginError");
+            errorEl.textContent = "";
+
+            if (!username || !password) {
+                errorEl.textContent = "Please enter username and password.";
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.ok) {
+                    errorEl.textContent = data.error || "Login failed.";
+                    return;
+                }
+
+                // ✅ save token + user (with homePage)
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+
+                // Optional: show small message
+                // errorEl.style.color = "#16a34a";
+                // errorEl.textContent = "Login successful, redirecting…";
+
+                // ✅ generic redirect – per-user homePage will redirect on each page
+                window.location.href = "/dashboard.html";
+            } catch (e) {
+                console.error("Login error:", e);
+                errorEl.textContent = "Network/server error.";
+            }
+        }
+
+        document
+            .getElementById("loginForm")
+            .addEventListener("submit", doLogin);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Create / Import Orders</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<script>
+    (() => {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const authToken = localStorage.getItem("token");
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.get("logout") === "1") {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.replace("/index.html?logout=1");
+        }
+
+        if (!user || !authToken) {
+            window.location.replace("/index.html?logout=1");
+        } else {
+            const current = location.pathname.split("/").pop() || "index.html";
+            if (user.homePage && user.homePage !== current) {
+                window.location.replace("/" + user.homePage);
+            }
+        }
+    })();
+</script>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="import-orders.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Create / Import Orders</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Create / Import Orders</div>
+                    <div class="main-subtitle">
+                        Sales / Order Creator – Upload file → Preview → Create Draft.
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    <span class="chip" id="userChip">User: —</span>
+                </div>
+            </header>
+
+            <!-- Quick stats -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Today summary</div>
+                        <div class="card-subtitle">Quick overview for order importing</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div class="stat-label">Imported today</div>
+                        <div class="stat-value" id="statImported">0</div>
+                        <div class="stat-chip">Orders</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Draft waiting activation</div>
+                        <div class="stat-value" id="statDraft">0</div>
+                        <div class="stat-chip">Draft</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Last import</div>
+                        <div class="stat-value" id="statLastImport">—</div>
+                        <div class="stat-chip">Time</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Warnings detected</div>
+                        <div class="stat-value" id="statWarnings">0</div>
+                        <div class="stat-chip">Checks</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Import card -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">1) Upload export</div>
+                        <div class="card-subtitle">Upload file, then preview before creating Draft</div>
+                    </div>
+                </div>
+
+                <form id="importForm" style="max-width:720px; font-size:0.85rem;">
+                    <div class="form-group">
+                        <div class="field-label">File (Excel / CSV / Text)</div>
+                        <input id="noriaFile" type="file" class="input" style="padding:6px 10px;" />
+                        <div id="fileMeta" style="margin-top:6px; font-size:0.8rem; color:#6b7280;">
+                            No file selected.
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <div class="field-label">PRF number (optional)</div>
+                            <input id="prfInput" type="text" class="input" placeholder="e.g. 25000641" />
+                        </div>
+
+                        <div class="form-group">
+                            <div class="field-label">Delivery date (optional)</div>
+                            <input id="deliveryDateInput" type="date" class="input" />
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <div class="field-label">Client name</div>
+                            <input id="clientInput" type="text" class="input" placeholder="e.g. ALEXCO" />
+                        </div>
+
+                        <div class="form-group">
+                            <div class="field-label">Order number</div>
+                            <input id="orderNoInput" type="text" class="input" placeholder="e.g. 580" />
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-top:6px;">
+                        <button type="button" class="btn btn-primary" id="previewBtn">Preview</button>
+                        <button type="button" class="btn btn-ghost" id="resetBtn">Reset</button>
+                    </div>
+
+                    <div id="importStatus" style="margin-top:10px; font-size:0.8rem; color:#6b7280;">
+                        Waiting for file…
+                    </div>
+                </form>
+            </section>
+
+            <!-- Preview card -->
+            <section class="card" id="previewCard" style="display:none;">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">2) Preview & checks</div>
+                        <div class="card-subtitle">Preview first lines only</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-primary" id="createDraftBtn" type="button">Create Draft</button>
+                        <button class="btn btn-ghost" id="closePreviewBtn" type="button">Close</button>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px;">
+                    <div class="card">
+                        <div class="stat-label">Order #</div>
+                        <div class="stat-value" id="pvOrderNo">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="stat-label">Client</div>
+                        <div class="stat-value" id="pvClient">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="stat-label">Lines</div>
+                        <div class="stat-value" id="pvLines">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="stat-label">Total pieces</div>
+                        <div class="stat-value" id="pvPieces">—</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <div class="field-label">Checks</div>
+                    <div id="checksBox" class="station-status-message info">No checks yet.</div>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="field-label">Preview (first 15 lines)</div>
+                    <div class="table-wrapper" style="max-height:320px; overflow:auto;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Line</th>
+                                    <th>Qty</th>
+                                    <th>Size</th>
+                                    <th>Type</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recently imported orders -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Recently imported orders</div>
+                        <div class="card-subtitle">Last orders created (traceability).</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Client</th>
+                                <th>Created date</th>
+                                <th>Delivery date</th>
+                                <th>Lines</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="amaniOrdersBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/import-orders.js"></script>
+</body>
+
+</html>

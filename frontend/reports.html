@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Reports</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        /* ===== Extra UI helpers (works with your style.css) ===== */
+        .filters-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        .filters-wrap .input {
+            max-width: 220px;
+        }
+
+        .filters-right {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 0.8rem;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            background: #f3f4f6;
+            color: #111827;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .tabs {
+            display: inline-flex;
+            background: #f3f4f6;
+            border-radius: 999px;
+            padding: 4px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .tab {
+            border: none;
+            background: transparent;
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #374151;
+        }
+
+        .tab.active {
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        @media (max-width: 1100px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .kpi-card {
+            padding: 10px 12px;
+        }
+
+        .section-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 1100px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        @media (max-width: 1100px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            padding: 10px 12px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 260px;
+            display: block;
+        }
+
+        .clickable {
+            cursor: pointer;
+        }
+
+        .mini {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .warn {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .ok {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .info {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .print-only {
+            display: none;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            body {
+                background: #fff !important;
+            }
+
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #e5e7eb !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar no-print">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+                <a href="quality.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Quality</span>
+                </a>
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header no-print">
+                <div>
+                    <div class="main-title">Reports</div>
+                    <div class="main-subtitle">Broken • Productivity • Lead Time • On-time Delivery • WIP</div>
+                </div>
+            </header>
+
+            <!-- PRINT HEADER -->
+            <section class="print-only" style="margin-bottom:12px;">
+                <h2 style="margin:0;">Glass Tracking – Reports</h2>
+                <div class="muted" id="printRangeLine">Range: -</div>
+            </section>
+
+            <section class="card">
+                <div class="card-header no-print">
+                    <div>
+                        <div class="card-title">Report Filters</div>
+                        <div class="card-subtitle">Date range + Order + Customer + Station + Export</div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-wrap no-print">
+                    <div class="tabs" id="rangeTabs">
+                        <button class="tab active" data-range="last7">Last 7 days</button>
+                        <button class="tab" data-range="today">Today</button>
+                        <button class="tab" data-range="thisMonth">This month</button>
+                        <button class="tab" data-range="custom">Custom</button>
+                    </div>
+
+                    <input type="date" class="input" id="fromDate" style="max-width:170px;" />
+                    <input type="date" class="input" id="toDate" style="max-width:170px;" />
+
+                    <input type="text" class="input" id="orderFilter" placeholder="Order (e.g. ORD-1002)" />
+
+                    <select class="input" id="customerFilter" style="max-width:200px;">
+                        <option value="all">Customer: All</option>
+                    </select>
+
+                    <select class="input" id="stationFilter" style="max-width:200px;">
+                        <option value="all">Station: All</option>
+                    </select>
+
+                    <div class="filters-right">
+                        <span class="pill" id="activePill">Active filters: none</span>
+                        <button class="btn btn-ghost" id="resetBtn" type="button">Reset</button>
+                        <button class="btn btn-primary" id="applyBtn" type="button">Apply</button>
+                        <button class="btn btn-ghost" id="exportExcelBtn" type="button">Export Excel</button>
+                        <button class="btn btn-primary" id="exportPdfBtn" type="button">Export PDF</button>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="kpi-grid">
+                    <div class="card kpi-card">
+                        <div class="stat-label">Broken pieces</div>
+                        <div class="stat-value" id="kpiBroken">0</div>
+                        <div class="stat-chip" id="kpiBrokenChip">Filtered</div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="stat-label">Broken rate</div>
+                        <div class="stat-value" id="kpiBrokenRate">0%</div>
+                        <div class="stat-chip">Broken / completed</div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="stat-label">Productivity (pcs)</div>
+                        <div class="stat-value" id="kpiProd">0</div>
+                        <div class="stat-chip">Completed scans</div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="stat-label">Avg lead time</div>
+                        <div class="stat-value" id="kpiLead">-</div>
+                        <div class="stat-chip">Cutting → Delivery</div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="stat-label">On-time delivery</div>
+                        <div class="stat-value" id="kpiOnTime">0%</div>
+                        <div class="stat-chip">Full + Partial</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid-3">
+                    <div class="card chart-box">
+                        <div class="section-title">Broken trend</div>
+                        <div class="section-subtitle">Daily broken pieces (filtered)</div>
+                        <canvas id="brokenTrendChart"></canvas>
+                    </div>
+
+                    <div class="card chart-box">
+                        <div class="section-title">Productivity by station</div>
+                        <div class="section-subtitle">Completed pcs (filtered)</div>
+                        <canvas id="prodStationChart"></canvas>
+                    </div>
+
+                    <div class="card chart-box">
+                        <div class="section-title">WIP by stage</div>
+                        <div class="section-subtitle">Pieces stuck in each stage</div>
+                        <canvas id="wipChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- BROKEN REPORT -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Broken Report</div>
+                        <div class="card-subtitle">By station • by reason • by worker + full broken list</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Broken events (detailed)</div>
+                        <div class="section-subtitle">Click a row to open related order details</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Order</th>
+                                        <th>Piece</th>
+                                        <th>Station</th>
+                                        <th>Worker</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="brokenEventsTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Breakdown</div>
+                        <div class="section-subtitle">Grouped analytics</div>
+
+                        <div class="grid-3" style="grid-template-columns: 1fr 1fr 1fr;">
+                            <div>
+                                <div class="mini" style="font-weight:700; margin-bottom:6px;">By station</div>
+                                <div class="table-wrapper">
+                                    <table class="table table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Station</th>
+                                                <th>Broken</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="brokenByStationTbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="mini" style="font-weight:700; margin-bottom:6px;">By reason</div>
+                                <div class="table-wrapper">
+                                    <table class="table table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Reason</th>
+                                                <th>Broken</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="brokenByReasonTbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="mini" style="font-weight:700; margin-bottom:6px;">By worker</div>
+                                <div class="table-wrapper">
+                                    <table class="table table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Worker</th>
+                                                <th>Broken</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="brokenByWorkerTbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="muted" style="margin-top:10px;">
+                            Tip: Clicking a station in tables will apply station filter instantly.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PRODUCTIVITY -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Productivity</div>
+                        <div class="card-subtitle">Pieces completed per station / day / worker</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">By station (table)</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Station</th>
+                                        <th>Completed pcs</th>
+                                        <th>Avg / day</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prodByStationTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">By worker (table)</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Worker</th>
+                                        <th>Station</th>
+                                        <th>Completed pcs</th>
+                                        <th>Broken pcs</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prodByWorkerTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- LEAD TIME -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Lead Time</div>
+                        <div class="card-subtitle">Average time per station + bottlenecks</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Average duration per station</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Station</th>
+                                        <th>Avg duration</th>
+                                        <th>Max duration</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leadTimeTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Bottleneck insight</div>
+                        <div class="section-subtitle">Top 2 stations slowing orders (demo logic)</div>
+                        <div id="bottleneckBox" class="muted"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DELIVERY -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">On-time Delivery</div>
+                        <div class="card-subtitle">Full vs partial • late deliveries • customer impact</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Delivery performance (orders)</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Order</th>
+                                        <th>Customer</th>
+                                        <th>Due</th>
+                                        <th>Delivered</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deliveryTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Summary</div>
+                        <div id="deliverySummaryBox" class="muted"></div>
+                        <div style="margin-top:10px;">
+                            <span class="pill ok">On-time</span>
+                            <span class="pill warn">Late</span>
+                            <span class="pill info">Partial</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WIP -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">WIP (Work In Progress)</div>
+                        <div class="card-subtitle">Pieces currently stuck per stage</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">WIP by stage (table)</div>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>Waiting</th>
+                                        <th>In progress</th>
+                                        <th>Total WIP</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wipTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:10px 12px;">
+                        <div class="section-title">Action list (demo)</div>
+                        <div class="section-subtitle">What to fix first based on WIP + delays</div>
+                        <div id="actionBox" class="muted"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        /* =========================================================
+          MOCK DATA (Front-end) — later you replace with backend API
+        ========================================================== */
+
+        const STATIONS = ["Cutting", "Grinding", "Washing", "Furnace", "Double", "Lamination", "Packing", "Delivery"];
+        const CUSTOMERS = ["ALEXCO", "Tempo", "Project Alpha", "Showroom", "Maison", "City Mall", "Office Tower"];
+        const BREAK_REASONS = ["Fell on floor", "Scratch", "Wrong handling", "Machine issue", "Edge crack", "Transport inside"];
+        const WORKERS = [
+            { name: "Ali", station: "Cutting" },
+            { name: "Hadi", station: "Cutting" },
+            { name: "Omar", station: "Grinding" },
+            { name: "Mahmoud", station: "Grinding" },
+            { name: "Khaled", station: "Washing" },
+            { name: "Rami", station: "Furnace" },
+            { name: "Youssef", station: "Double" },
+            { name: "Samer", station: "Lamination" },
+            { name: "Nabil", station: "Packing" },
+            { name: "Fadi", station: "Delivery" },
+        ];
+
+        // Seeded RNG for stable demo
+        function mulberry32(a) {
+            return function () {
+                let t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        function pad2(n) { return String(n).padStart(2, "0"); }
+
+        function toISODate(d) {
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        }
+
+        function addDays(date, days) {
+            const d = new Date(date);
+            d.setDate(d.getDate() + days);
+            return d;
+        }
+
+        function between(dateStr, fromStr, toStr) {
+            const d = new Date(dateStr);
+            const f = new Date(fromStr);
+            const t = new Date(toStr);
+            return d >= f && d <= t;
+        }
+
+        // Generate demo days (last 30 days)
+        const TODAY = new Date();
+        const START_30 = addDays(TODAY, -29);
+
+        const rng = mulberry32(12345);
+
+        // Orders list
+        const ORDERS = Array.from({ length: 40 }).map((_, i) => {
+            const created = addDays(START_30, Math.floor(rng() * 30));
+            const due = addDays(created, 3 + Math.floor(rng() * 10));
+            const delivered = rng() < 0.65 ? addDays(due, Math.floor((rng() - 0.5) * 6)) : null; // some not delivered
+            const deliveryType = delivered ? (rng() < 0.35 ? "Partial" : "Full") : "-";
+
+            return {
+                id: `ORD-${1001 + i}`,
+                customer: CUSTOMERS[Math.floor(rng() * CUSTOMERS.length)],
+                createdDate: toISODate(created),
+                dueDate: toISODate(due),
+                deliveredDate: delivered ? toISODate(delivered) : null,
+                deliveryType,
+            };
+        });
+
+        // Productivity scans (completed pieces) per day/station/worker
+        const PROD_SCANS = [];
+        for (let day = 0; day < 30; day++) {
+            const d = addDays(START_30, day);
+            const date = toISODate(d);
+
+            STATIONS.forEach(st => {
+                if (st === "Delivery") return; // productivity focuses production stations
+                const base = 20 + Math.floor(rng() * 25);
+                const completed = Math.max(0, base + Math.floor((rng() - 0.5) * 12));
+
+                // split across 1-2 workers for that station
+                const workers = WORKERS.filter(w => w.station === st);
+                if (!workers.length) return;
+
+                const w1 = workers[Math.floor(rng() * workers.length)];
+                const w2 = workers[Math.floor(rng() * workers.length)];
+
+                const part1 = Math.floor(completed * (0.45 + rng() * 0.35));
+                const part2 = completed - part1;
+
+                PROD_SCANS.push({ date, station: st, worker: w1.name, completed: part1 });
+                if (w2.name !== w1.name) PROD_SCANS.push({ date, station: st, worker: w2.name, completed: part2 });
+            });
+        }
+
+        // Broken events
+        const BROKEN_EVENTS = [];
+        for (let i = 0; i < 120; i++) {
+            const d = addDays(START_30, Math.floor(rng() * 30));
+            const date = toISODate(d);
+
+            const station = STATIONS[Math.floor(rng() * (STATIONS.length - 1))]; // exclude Delivery
+            const workerCandidates = WORKERS.filter(w => w.station === station);
+            const worker = workerCandidates.length ? workerCandidates[Math.floor(rng() * workerCandidates.length)].name : "Unknown";
+
+            const order = ORDERS[Math.floor(rng() * ORDERS.length)];
+
+            BROKEN_EVENTS.push({
+                date,
+                orderId: order.id,
+                customer: order.customer,
+                pieceId: `${order.id}-${station}-${Math.floor(rng() * 50 + 1)}`,
+                station,
+                worker,
+                reason: BREAK_REASONS[Math.floor(rng() * BREAK_REASONS.length)]
+            });
+        }
+
+        // Lead times per station (avg/max minutes) per day (demo)
+        const LEAD_SAMPLES = [];
+        for (let day = 0; day < 30; day++) {
+            const date = toISODate(addDays(START_30, day));
+            STATIONS.forEach(st => {
+                if (st === "Delivery") return;
+                const avg = Math.floor(12 + rng() * 55); // minutes
+                const max = avg + Math.floor(10 + rng() * 40);
+                LEAD_SAMPLES.push({ date, station: st, avgMin: avg, maxMin: max });
+            });
+        }
+
+        // WIP snapshot per day (waiting/inProgress)
+        const WIP_SNAPSHOTS = [];
+        for (let day = 0; day < 30; day++) {
+            const date = toISODate(addDays(START_30, day));
+            STATIONS.forEach(st => {
+                if (st === "Delivery") return;
+                const waiting = Math.floor(rng() * 20);
+                const inProg = Math.floor(5 + rng() * 15);
+                WIP_SNAPSHOTS.push({ date, stage: st, waiting, inProgress: inProg });
+            });
+        }
+
+
+        /* =========================================================
+          FILTERS UI
+        ========================================================== */
+
+        const fromDate = document.getElementById("fromDate");
+        const toDate = document.getElementById("toDate");
+        const orderFilter = document.getElementById("orderFilter");
+        const customerFilter = document.getElementById("customerFilter");
+        const stationFilter = document.getElementById("stationFilter");
+        const activePill = document.getElementById("activePill");
+
+        const applyBtn = document.getElementById("applyBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const exportExcelBtn = document.getElementById("exportExcelBtn");
+        const exportPdfBtn = document.getElementById("exportPdfBtn");
+
+        // Fill dropdowns
+        CUSTOMERS.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = c;
+            customerFilter.appendChild(opt);
+        });
+
+        STATIONS.forEach(s => {
+            const opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s;
+            stationFilter.appendChild(opt);
+        });
+
+        // default range: last 7
+        function setRangeLast7() {
+            const end = new Date();
+            const start = addDays(end, -6);
+            fromDate.value = toISODate(start);
+            toDate.value = toISODate(end);
+        }
+
+        function setRangeToday() {
+            const d = toISODate(new Date());
+            fromDate.value = d;
+            toDate.value = d;
+        }
+
+        function setRangeThisMonth() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            fromDate.value = toISODate(start);
+            toDate.value = toISODate(end);
+        }
+
+        const tabs = document.querySelectorAll("#rangeTabs .tab");
+        let activeRange = "last7";
+
+        tabs.forEach(t => {
+            t.addEventListener("click", () => {
+                tabs.forEach(x => x.classList.remove("active"));
+                t.classList.add("active");
+                activeRange = t.dataset.range;
+
+                if (activeRange === "last7") setRangeLast7();
+                if (activeRange === "today") setRangeToday();
+                if (activeRange === "thisMonth") setRangeThisMonth();
+                // custom: user selects manually
+
+                renderAll();
+            });
+        });
+
+        // initial
+        setRangeLast7();
+
+        resetBtn.addEventListener("click", () => {
+            tabs.forEach(x => x.classList.remove("active"));
+            document.querySelector('#rangeTabs .tab[data-range="last7"]').classList.add("active");
+            activeRange = "last7";
+            setRangeLast7();
+            orderFilter.value = "";
+            customerFilter.value = "all";
+            stationFilter.value = "all";
+            renderAll();
+        });
+
+        applyBtn.addEventListener("click", () => renderAll());
+
+        // quick live
+        orderFilter.addEventListener("input", () => renderAll());
+        customerFilter.addEventListener("change", () => renderAll());
+        stationFilter.addEventListener("change", () => renderAll());
+
+        function getFilters() {
+            const f = fromDate.value || toISODate(START_30);
+            const t = toDate.value || toISODate(TODAY);
+            return {
+                from: f,
+                to: t,
+                order: (orderFilter.value || "").trim().toUpperCase(),
+                customer: customerFilter.value,
+                station: stationFilter.value
+            };
+        }
+
+        function setActivePillText(filters) {
+            const parts = [];
+            parts.push(`${filters.from} → ${filters.to}`);
+            if (filters.order) parts.push(`Order: ${filters.order}`);
+            if (filters.customer !== "all") parts.push(`Customer: ${filters.customer}`);
+            if (filters.station !== "all") parts.push(`Station: ${filters.station}`);
+            activePill.textContent = `Active filters: ${parts.join(" • ")}`;
+            document.getElementById("printRangeLine").textContent = `Range: ${parts.join(" • ")}`;
+        }
+
+
+        /* =========================================================
+          HELPERS (group + aggregate)
+        ========================================================== */
+
+        function groupCount(arr, keyFn) {
+            const map = new Map();
+            arr.forEach(x => {
+                const k = keyFn(x);
+                map.set(k, (map.get(k) || 0) + 1);
+            });
+            return Array.from(map.entries()).map(([k, v]) => ({ key: k, value: v })).sort((a, b) => b.value - a.value);
+        }
+
+        function groupSum(arr, keyFn, valFn) {
+            const map = new Map();
+            arr.forEach(x => {
+                const k = keyFn(x);
+                map.set(k, (map.get(k) || 0) + (valFn(x) || 0));
+            });
+            return Array.from(map.entries()).map(([k, v]) => ({ key: k, value: v })).sort((a, b) => b.value - a.value);
+        }
+
+        function uniqueDaysInRange(from, to) {
+            const out = [];
+            let d = new Date(from);
+            const end = new Date(to);
+            while (d <= end) {
+                out.push(toISODate(d));
+                d = addDays(d, 1);
+            }
+            return out;
+        }
+
+
+        /* =========================================================
+          CHARTS (simple canvas - no libs)
+        ========================================================== */
+
+        function clearCanvas(ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+
+        function setupCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(rect.width * dpr);
+            canvas.height = Math.floor(rect.height * dpr);
+            const ctx = canvas.getContext("2d");
+            ctx.scale(dpr, dpr);
+            return ctx;
+        }
+
+        function drawLineChart(canvasId, labels, values) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = setupCanvas(canvas);
+
+            const w = canvas.getBoundingClientRect().width;
+            const h = canvas.getBoundingClientRect().height;
+
+            clearCanvas(ctx);
+
+            // padding
+            const P = 28;
+            const x0 = P, y0 = h - P, x1 = w - P, y1 = P;
+
+            // axis
+            ctx.strokeStyle = "rgba(148,163,184,0.7)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y0);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+
+            const maxV = Math.max(1, ...values);
+            const minV = 0;
+
+            // grid
+            const gridLines = 4;
+            ctx.fillStyle = "rgba(100,116,139,0.9)";
+            ctx.font = "12px Arial";
+            for (let i = 0; i <= gridLines; i++) {
+                const y = y0 - (i / gridLines) * (y0 - y1);
+                ctx.strokeStyle = "rgba(226,232,240,1)";
+                ctx.beginPath();
+                ctx.moveTo(x0, y);
+                ctx.lineTo(x1, y);
+                ctx.stroke();
+                const v = Math.round(minV + (i / gridLines) * (maxV - minV));
+                ctx.fillText(String(v), 6, y + 4);
+            }
+
+            if (!values.length) return;
+
+            // line
+            ctx.strokeStyle = "rgba(37,99,235,0.95)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            values.forEach((v, i) => {
+                const x = x0 + (i / Math.max(1, values.length - 1)) * (x1 - x0);
+                const y = y0 - ((v - minV) / (maxV - minV)) * (y0 - y1);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // dots
+            ctx.fillStyle = "rgba(37,99,235,1)";
+            values.forEach((v, i) => {
+                const x = x0 + (i / Math.max(1, values.length - 1)) * (x1 - x0);
+                const y = y0 - ((v - minV) / (maxV - minV)) * (y0 - y1);
+                ctx.beginPath();
+                ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // bottom labels (sparse)
+            ctx.fillStyle = "rgba(100,116,139,0.9)";
+            const step = Math.ceil(labels.length / 6);
+            labels.forEach((lab, i) => {
+                if (i % step !== 0 && i !== labels.length - 1) return;
+                const x = x0 + (i / Math.max(1, labels.length - 1)) * (x1 - x0);
+                ctx.fillText(lab.slice(5), x - 10, h - 8);
+            });
+        }
+
+        function drawBarChart(canvasId, labels, values) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = setupCanvas(canvas);
+
+            const w = canvas.getBoundingClientRect().width;
+            const h = canvas.getBoundingClientRect().height;
+
+            clearCanvas(ctx);
+
+            const P = 28;
+            const x0 = P, y0 = h - P, x1 = w - P, y1 = P;
+
+            // axis
+            ctx.strokeStyle = "rgba(148,163,184,0.7)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y0);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+
+            const maxV = Math.max(1, ...values);
+
+            const n = labels.length || 1;
+            const barW = (x1 - x0) / n * 0.68;
+            const gap = (x1 - x0) / n * 0.32;
+
+            ctx.font = "12px Arial";
+            ctx.fillStyle = "rgba(100,116,139,0.9)";
+
+            labels.forEach((lab, i) => {
+                const v = values[i] || 0;
+                const bh = (v / maxV) * (y0 - y1);
+                const x = x0 + i * (barW + gap) + gap * 0.5;
+                const y = y0 - bh;
+
+                ctx.fillStyle = "rgba(37,99,235,0.35)";
+                ctx.strokeStyle = "rgba(37,99,235,0.9)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.rect(x, y, barW, bh);
+                ctx.fill();
+                ctx.stroke();
+
+                // value label
+                ctx.fillStyle = "rgba(17,24,39,0.9)";
+                ctx.fillText(String(v), x + 6, y - 6);
+
+                // x label
+                ctx.fillStyle = "rgba(100,116,139,0.9)";
+                ctx.fillText(lab.length > 8 ? lab.slice(0, 8) + "…" : lab, x, h - 8);
+            });
+        }
+
+
+        /* =========================================================
+          RENDER
+        ========================================================== */
+
+        function renderAll() {
+            const filters = getFilters();
+            setActivePillText(filters);
+
+            // filtered broken
+            let broken = BROKEN_EVENTS.filter(e => between(e.date, filters.from, filters.to));
+
+            if (filters.order) broken = broken.filter(e => e.orderId === filters.order);
+            if (filters.customer !== "all") broken = broken.filter(e => e.customer === filters.customer);
+            if (filters.station !== "all") broken = broken.filter(e => e.station === filters.station);
+
+            // filtered productivity scans
+            let prod = PROD_SCANS.filter(e => between(e.date, filters.from, filters.to));
+            if (filters.station !== "all") prod = prod.filter(e => e.station === filters.station);
+
+            // lead times
+            let lead = LEAD_SAMPLES.filter(e => between(e.date, filters.from, filters.to));
+            if (filters.station !== "all") lead = lead.filter(e => e.station === filters.station);
+
+            // wip
+            let wip = WIP_SNAPSHOTS.filter(e => between(e.date, filters.from, filters.to));
+            if (filters.station !== "all") wip = wip.filter(e => e.stage === filters.station);
+
+            // delivery table
+            let deliveryOrders = ORDERS.filter(o => between(o.createdDate, filters.from, filters.to));
+            if (filters.order) deliveryOrders = deliveryOrders.filter(o => o.id === filters.order);
+            if (filters.customer !== "all") deliveryOrders = deliveryOrders.filter(o => o.customer === filters.customer);
+
+            // KPI compute
+            const totalBroken = broken.length;
+            const totalCompleted = prod.reduce((s, x) => s + x.completed, 0);
+
+            const brokenRate = totalCompleted ? Math.round((totalBroken / totalCompleted) * 1000) / 10 : 0;
+
+            // avg lead: compute avg of station avgMin summed (demo)
+            const byStationAvg = groupSum(lead, x => x.station, x => x.avgMin);
+            const byStationCount = groupCount(lead, x => x.station);
+            const stationAvgMin = {};
+            byStationAvg.forEach(r => {
+                const c = (byStationCount.find(x => x.key === r.key)?.value || 1);
+                stationAvgMin[r.key] = r.value / c;
+            });
+
+            let totalLeadMin = 0;
+            Object.values(stationAvgMin).forEach(v => totalLeadMin += v);
+            const leadHr = totalLeadMin ? (totalLeadMin / 60).toFixed(1) : "-";
+
+            // on-time delivery
+            const delivered = deliveryOrders.filter(o => o.deliveredDate);
+            const ontime = delivered.filter(o => new Date(o.deliveredDate) <= new Date(o.dueDate)).length;
+            const ontimeRate = delivered.length ? Math.round((ontime / delivered.length) * 100) : 0;
+
+            document.getElementById("kpiBroken").textContent = totalBroken;
+            document.getElementById("kpiBrokenRate").textContent = `${brokenRate}%`;
+            document.getElementById("kpiProd").textContent = totalCompleted;
+            document.getElementById("kpiLead").textContent = totalLeadMin ? `${leadHr} h` : "-";
+            document.getElementById("kpiOnTime").textContent = `${ontimeRate}%`;
+
+            // Charts
+            renderBrokenTrend(filters, broken);
+            renderProdStationChart(prod);
+            renderWipChart(wip);
+
+            // Broken tables
+            renderBrokenTables(broken);
+
+            // Productivity tables
+            renderProdTables(filters, prod, broken);
+
+            // Lead time table
+            renderLeadTable(filters, lead);
+
+            // Delivery
+            renderDeliveryTable(filters, deliveryOrders);
+
+            // WIP
+            renderWipTable(filters, wip);
+
+            // Export handlers use CURRENT filtered data
+            setupExports(filters, broken, prod, lead, deliveryOrders, wip);
+        }
+
+        function renderBrokenTrend(filters, brokenEvents) {
+            const days = uniqueDaysInRange(filters.from, filters.to);
+            const map = new Map();
+            days.forEach(d => map.set(d, 0));
+            brokenEvents.forEach(e => map.set(e.date, (map.get(e.date) || 0) + 1));
+            const values = days.map(d => map.get(d) || 0);
+            drawLineChart("brokenTrendChart", days, values);
+        }
+
+        function renderProdStationChart(prod) {
+            const sums = groupSum(prod, x => x.station, x => x.completed);
+            const labels = sums.map(x => x.key);
+            const values = sums.map(x => Math.round(x.value));
+            drawBarChart("prodStationChart", labels, values);
+        }
+
+        function renderWipChart(wip) {
+            // show last day snapshot in range (or average)
+            if (!wip.length) {
+                drawBarChart("wipChart", ["-"], [0]);
+                return;
+            }
+            // use latest date within filtered data
+            const latestDate = wip.reduce((m, x) => x.date > m ? x.date : m, wip[0].date);
+            const snapshot = wip.filter(x => x.date === latestDate);
+
+            const grouped = groupSum(snapshot, x => x.stage, x => x.waiting + x.inProgress);
+            const labels = grouped.map(x => x.key);
+            const values = grouped.map(x => Math.round(x.value));
+            drawBarChart("wipChart", labels, values);
+        }
+
+        function renderBrokenTables(broken) {
+            const brokenEventsTbody = document.getElementById("brokenEventsTbody");
+            const brokenByStationTbody = document.getElementById("brokenByStationTbody");
+            const brokenByReasonTbody = document.getElementById("brokenByReasonTbody");
+            const brokenByWorkerTbody = document.getElementById("brokenByWorkerTbody");
+
+            // detailed list (latest first)
+            brokenEventsTbody.innerHTML = "";
+            const rows = [...broken].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 50);
+            rows.forEach(e => {
+                const tr = document.createElement("tr");
+                tr.classList.add("clickable");
+                tr.innerHTML = `
+          <td>${e.date}</td>
+          <td>${e.orderId}</td>
+          <td>${e.pieceId}</td>
+          <td>${e.station}</td>
+          <td>${e.worker}</td>
+          <td>${e.reason}</td>
+        `;
+                tr.addEventListener("click", () => {
+                    window.location.href = `order-details.html?order=${encodeURIComponent(e.orderId)}`;
+                });
+                brokenEventsTbody.appendChild(tr);
+            });
+
+            if (!rows.length) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="6" class="muted">No broken events for this filter.</td>`;
+                brokenEventsTbody.appendChild(tr);
+            }
+
+            // group by station
+            brokenByStationTbody.innerHTML = "";
+            const bySt = groupCount(broken, x => x.station);
+            bySt.slice(0, 10).forEach(r => {
+                const tr = document.createElement("tr");
+                tr.classList.add("clickable");
+                tr.innerHTML = `<td>${r.key}</td><td>${r.value}</td>`;
+                tr.addEventListener("click", () => {
+                    stationFilter.value = r.key;
+                    renderAll();
+                });
+                brokenByStationTbody.appendChild(tr);
+            });
+            if (!bySt.length) brokenByStationTbody.innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
+
+            // group by reason
+            brokenByReasonTbody.innerHTML = "";
+            const byReason = groupCount(broken, x => x.reason);
+            byReason.slice(0, 10).forEach(r => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${r.key}</td><td>${r.value}</td>`;
+                brokenByReasonTbody.appendChild(tr);
+            });
+            if (!byReason.length) brokenByReasonTbody.innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
+
+            // group by worker
+            brokenByWorkerTbody.innerHTML = "";
+            const byWorker = groupCount(broken, x => x.worker);
+            byWorker.slice(0, 10).forEach(r => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${r.key}</td><td>${r.value}</td>`;
+                brokenByWorkerTbody.appendChild(tr);
+            });
+            if (!byWorker.length) brokenByWorkerTbody.innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
+        }
+
+        function renderProdTables(filters, prod, broken) {
+            const prodByStationTbody = document.getElementById("prodByStationTbody");
+            const prodByWorkerTbody = document.getElementById("prodByWorkerTbody");
+
+            // By station
+            prodByStationTbody.innerHTML = "";
+            const sums = groupSum(prod, x => x.station, x => x.completed);
+            const daysCount = uniqueDaysInRange(filters.from, filters.to).length;
+
+            sums.forEach(r => {
+                const avgPerDay = daysCount ? Math.round(r.value / daysCount) : 0;
+                const tr = document.createElement("tr");
+                tr.classList.add("clickable");
+                tr.innerHTML = `
+          <td>${r.key}</td>
+          <td>${Math.round(r.value)}</td>
+          <td>${avgPerDay}</td>
+        `;
+                tr.addEventListener("click", () => {
+                    stationFilter.value = r.key;
+                    renderAll();
+                });
+                prodByStationTbody.appendChild(tr);
+            });
+            if (!sums.length) prodByStationTbody.innerHTML = `<tr><td colspan="3" class="muted">No productivity data.</td></tr>`;
+
+            // By worker (completed + broken)
+            prodByWorkerTbody.innerHTML = "";
+            const prodByWorker = groupSum(prod, x => `${x.worker}||${x.station}`, x => x.completed);
+
+            const brokenByWorker = groupCount(broken, x => `${x.worker}||${x.station}`);
+            const brokenMap = new Map(brokenByWorker.map(x => [x.key, x.value]));
+
+            prodByWorker.slice(0, 20).forEach(r => {
+                const [worker, station] = r.key.split("||");
+                const b = brokenMap.get(r.key) || 0;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+          <td>${worker}</td>
+          <td>${station}</td>
+          <td>${Math.round(r.value)}</td>
+          <td style="color:#b91c1c;">${b}</td>
+        `;
+                prodByWorkerTbody.appendChild(tr);
+            });
+
+            if (!prodByWorker.length) prodByWorkerTbody.innerHTML = `<tr><td colspan="4" class="muted">No worker productivity data.</td></tr>`;
+        }
+
+        function renderLeadTable(filters, lead) {
+            const leadTimeTbody = document.getElementById("leadTimeTbody");
+            const bottleneckBox = document.getElementById("bottleneckBox");
+
+            leadTimeTbody.innerHTML = "";
+
+            // avg per station
+            const sumAvg = groupSum(lead, x => x.station, x => x.avgMin);
+            const sumMax = groupSum(lead, x => x.station, x => x.maxMin);
+            const count = groupCount(lead, x => x.station);
+            const countMap = new Map(count.map(x => [x.key, x.value]));
+
+            const items = sumAvg.map(a => {
+                const c = countMap.get(a.key) || 1;
+                const avg = a.value / c;
+                const max = (sumMax.find(x => x.key === a.key)?.value || 0) / c;
+                return { station: a.key, avg, max };
+            }).sort((x, y) => y.avg - x.avg);
+
+            items.forEach(it => {
+                const note = it.avg > 45 ? "Bottleneck risk" : (it.avg > 30 ? "Monitor" : "Healthy");
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+          <td>${it.station}</td>
+          <td>${Math.round(it.avg)} min</td>
+          <td>${Math.round(it.max)} min</td>
+          <td class="muted">${note}</td>
+        `;
+                leadTimeTbody.appendChild(tr);
+            });
+
+            if (!items.length) leadTimeTbody.innerHTML = `<tr><td colspan="4" class="muted">No lead time data.</td></tr>`;
+
+            const top2 = items.slice(0, 2);
+            if (!top2.length) {
+                bottleneckBox.textContent = "—";
+            } else {
+                bottleneckBox.innerHTML = `
+          <div><strong>1)</strong> ${top2[0].station} – avg ${Math.round(top2[0].avg)} min</div>
+          ${top2[1] ? `<div style="margin-top:6px;"><strong>2)</strong> ${top2[1].station} – avg ${Math.round(top2[1].avg)} min</div>` : ""}
+          <div style="margin-top:10px;" class="muted">
+            Suggestion: add scanner discipline + avoid rework + check machine downtime in these stations.
+          </div>
+        `;
+            }
+        }
+
+        function renderDeliveryTable(filters, deliveryOrders) {
+            const tbody = document.getElementById("deliveryTbody");
+            const box = document.getElementById("deliverySummaryBox");
+            tbody.innerHTML = "";
+
+            // show last 20 by due date
+            const rows = [...deliveryOrders].sort((a, b) => b.dueDate.localeCompare(a.dueDate)).slice(0, 20);
+
+            let delivered = 0, ontime = 0, late = 0, partial = 0, full = 0;
+
+            rows.forEach(o => {
+                const deliveredDate = o.deliveredDate || "-";
+                const due = o.dueDate;
+
+                const isDelivered = !!o.deliveredDate;
+                if (isDelivered) delivered++;
+
+                const isLate = isDelivered ? (new Date(o.deliveredDate) > new Date(o.dueDate)) : false;
+                if (isDelivered && isLate) late++;
+                if (isDelivered && !isLate) ontime++;
+
+                if (isDelivered && o.deliveryType === "Partial") partial++;
+                if (isDelivered && o.deliveryType === "Full") full++;
+
+                let statusHtml = `<span class="pill">Not delivered</span>`;
+                if (isDelivered && !isLate && o.deliveryType === "Full") statusHtml = `<span class="pill ok">On-time (Full)</span>`;
+                if (isDelivered && !isLate && o.deliveryType === "Partial") statusHtml = `<span class="pill info">On-time (Partial)</span>`;
+                if (isDelivered && isLate && o.deliveryType === "Full") statusHtml = `<span class="pill warn">Late (Full)</span>`;
+                if (isDelivered && isLate && o.deliveryType === "Partial") statusHtml = `<span class="pill warn">Late (Partial)</span>`;
+
+                const tr = document.createElement("tr");
+                tr.classList.add("clickable");
+                tr.innerHTML = `
+          <td>${o.id}</td>
+          <td>${o.customer}</td>
+          <td>${due}</td>
+          <td>${deliveredDate}</td>
+          <td>${o.deliveryType}</td>
+          <td>${statusHtml}</td>
+        `;
+                tr.addEventListener("click", () => window.location.href = `order-details.html?order=${encodeURIComponent(o.id)}`);
+                tbody.appendChild(tr);
+            });
+
+            if (!rows.length) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="6" class="muted">No delivery data for this filter.</td>`;
+                tbody.appendChild(tr);
+            }
+
+            const ontimeRate = delivered ? Math.round((ontime / delivered) * 100) : 0;
+
+            box.innerHTML = `
+        <div><strong>Delivered orders:</strong> ${delivered}</div>
+        <div style="margin-top:6px;"><strong>On-time:</strong> ${ontime} (${ontimeRate}%)</div>
+        <div style="margin-top:6px;"><strong>Late:</strong> ${late}</div>
+        <div style="margin-top:6px;"><strong>Full:</strong> ${full} • <strong>Partial:</strong> ${partial}</div>
+        <div style="margin-top:10px;" class="muted">
+          Partial deliveries help reduce customer waiting time, but watch repeated partial shipments.
+        </div>
+      `;
+        }
+
+        function renderWipTable(filters, wip) {
+            const tbody = document.getElementById("wipTbody");
+            const actionBox = document.getElementById("actionBox");
+            tbody.innerHTML = "";
+
+            if (!wip.length) {
+                tbody.innerHTML = `<tr><td colspan="4" class="muted">No WIP data.</td></tr>`;
+                actionBox.textContent = "—";
+                return;
+            }
+
+            // take latest date
+            const latestDate = wip.reduce((m, x) => x.date > m ? x.date : m, wip[0].date);
+            const snapshot = wip.filter(x => x.date === latestDate);
+
+            const totals = snapshot.map(s => ({
+                stage: s.stage,
+                waiting: s.waiting,
+                inProgress: s.inProgress,
+                total: s.waiting + s.inProgress
+            })).sort((a, b) => b.total - a.total);
+
+            totals.forEach(r => {
+                const tr = document.createElement("tr");
+                tr.classList.add("clickable");
+                tr.innerHTML = `
+          <td>${r.stage}</td>
+          <td>${r.waiting}</td>
+          <td>${r.inProgress}</td>
+          <td><strong>${r.total}</strong></td>
+        `;
+                tr.addEventListener("click", () => {
+                    stationFilter.value = r.stage;
+                    renderAll();
+                });
+                tbody.appendChild(tr);
+            });
+
+            const top = totals[0];
+            const second = totals[1];
+
+            actionBox.innerHTML = `
+        <div><strong>Today snapshot:</strong> ${latestDate}</div>
+        <div style="margin-top:8px;"><strong>Priority 1:</strong> ${top.stage} has ${top.total} WIP → check scanner discipline + machine downtime + manpower.</div>
+        ${second ? `<div style="margin-top:8px;"><strong>Priority 2:</strong> ${second.stage} has ${second.total} WIP → consider shifting worker / batching strategy.</div>` : ""}
+        <div style="margin-top:10px;" class="muted">This is demo logic. Later we compute based on real timestamps + SLA.</div>
+      `;
+        }
+
+
+        /* =========================================================
+          EXPORTS (Excel CSV + PDF Print)
+        ========================================================== */
+
+        function setupExports(filters, broken, prod, lead, deliveryOrders, wip) {
+
+            exportExcelBtn.onclick = () => {
+                // Create one combined CSV (Excel-friendly)
+                const lines = [];
+
+                lines.push(`Glass Tracking Reports`);
+                lines.push(`Filters,${filters.from} to ${filters.to},Order,${filters.order || "-"},Customer,${filters.customer},Station,${filters.station}`);
+                lines.push("");
+
+                // KPIs
+                const totalBroken = broken.length;
+                const totalCompleted = prod.reduce((s, x) => s + x.completed, 0);
+                const brokenRate = totalCompleted ? (totalBroken / totalCompleted) : 0;
+
+                const delivered = deliveryOrders.filter(o => o.deliveredDate);
+                const ontime = delivered.filter(o => new Date(o.deliveredDate) <= new Date(o.dueDate)).length;
+                const ontimeRate = delivered.length ? (ontime / delivered.length) : 0;
+
+                lines.push("KPI,Broken pieces,Broken rate,Productivity pcs,On-time delivery");
+                lines.push(`KPI,${totalBroken},${(brokenRate * 100).toFixed(1)}%,${totalCompleted},${(ontimeRate * 100).toFixed(1)}%`);
+                lines.push("");
+
+                // Broken events
+                lines.push("BROKEN EVENTS");
+                lines.push("date,order,piece,station,worker,reason");
+                broken.slice(0, 500).forEach(e => {
+                    lines.push(`${e.date},${e.orderId},${e.pieceId},${e.station},${e.worker},${e.reason}`);
+                });
+                lines.push("");
+
+                // Productivity
+                lines.push("PRODUCTIVITY (SCANS)");
+                lines.push("date,station,worker,completed");
+                prod.slice(0, 2000).forEach(p => {
+                    lines.push(`${p.date},${p.station},${p.worker},${p.completed}`);
+                });
+                lines.push("");
+
+                // Lead time
+                lines.push("LEAD TIME SAMPLES");
+                lines.push("date,station,avgMin,maxMin");
+                lead.slice(0, 2000).forEach(l => {
+                    lines.push(`${l.date},${l.station},${l.avgMin},${l.maxMin}`);
+                });
+                lines.push("");
+
+                // Delivery
+                lines.push("DELIVERY ORDERS");
+                lines.push("order,customer,created,due,delivered,deliveryType");
+                deliveryOrders.slice(0, 1000).forEach(o => {
+                    lines.push(`${o.id},${o.customer},${o.createdDate},${o.dueDate},${o.deliveredDate || "-"},${o.deliveryType}`);
+                });
+                lines.push("");
+
+                // WIP
+                lines.push("WIP SNAPSHOT");
+                lines.push("date,stage,waiting,inProgress");
+                wip.slice(0, 2000).forEach(x => {
+                    lines.push(`${x.date},${x.stage},${x.waiting},${x.inProgress}`);
+                });
+
+                const csv = lines.join("\n");
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Reports_${filters.from}_to_${filters.to}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            exportPdfBtn.onclick = () => {
+                // For PDF: use Print dialog (Save as PDF)
+                window.print();
+            };
+        }
+
+
+        // First render
+        window.addEventListener("resize", () => renderAll());
+        renderAll();
+    </script>
+</body>
+
+</html>

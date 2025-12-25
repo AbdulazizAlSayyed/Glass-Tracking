@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Delivery Out</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Live Tracking</span>
+                </a>
+                <a href="delivery.html" class="nav-item active">
+                    <div class="nav-item-icon"></div><span>Delivery Out</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Delivery Out</div>
+                    <div class="main-subtitle">Prepare shipments (partial deliveries supported) + view piece tracking.
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    <span class="chip">User: Delivery</span>
+                </div>
+            </header>
+
+            <div class="station-status-message info" id="deliveryStatus">
+                Choose an order to prepare a Delivery Note…
+            </div>
+
+            <!-- Filters -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Filters</div>
+                        <div class="card-subtitle">Search by order / customer</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:0.85rem;">
+                    <select class="input" style="max-width:220px;" id="filterStatus">
+                        <option value="all">Status: All</option>
+                        <option value="notshipped">Not shipped</option>
+                        <option value="partial">Partially shipped</option>
+                        <option value="delivered">Delivered</option>
+                    </select>
+
+                    <input class="input" style="max-width:280px;" id="searchOrders" placeholder="Order # / Customer" />
+
+                    <label style="display:flex; align-items:center; gap:8px; color:#6b7280;">
+                        <input type="checkbox" id="readyOnlyToggle" checked />
+                        Show only orders with READY pieces
+                    </label>
+                </div>
+            </section>
+
+            <!-- Orders list -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Orders</div>
+                        <div class="card-subtitle">Open order → select ready qty/pieces → confirm DN</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Ready</th>
+                                <th>Delivered</th>
+                                <th>Remaining</th>
+                                <th>Delivery status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersBody">
+                            <!-- injected -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Details panel -->
+                <div id="orderPanel" style="margin-top:18px; display:none;">
+                    <div class="card-header" style="margin-bottom:8px;">
+                        <div>
+                            <div class="card-title">
+                                Order <span id="panelOrderId">—</span> – Delivery preparation
+                            </div>
+                            <div class="card-subtitle" id="panelMeta">—</div>
+                        </div>
+                        <div class="badge" id="panelSummary">—</div>
+                    </div>
+
+                    <!-- Delivery Note inputs -->
+                    <div
+                        style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px; font-size:0.85rem;">
+                        <div>
+                            <div class="field-label">Delivery Note #</div>
+                            <input class="input" id="dnInput" placeholder="Auto (DN-0001)" disabled />
+                        </div>
+                        <div>
+                            <div class="field-label">Driver / Truck (optional)</div>
+                            <input class="input" id="driverInput" placeholder="e.g. Truck 12 / Ali" />
+                        </div>
+                        <div>
+                            <div class="field-label">Notes (optional)</div>
+                            <input class="input" id="notesInput" placeholder="Any notes..." />
+                        </div>
+                    </div>
+
+                    <!-- View tabs -->
+                    <div class="tabs" style="margin-bottom:10px;">
+                        <button class="tab active" id="tabGrouped" type="button">Grouped by spec (Qty)</button>
+                        <button class="tab" id="tabPieces" type="button">By pieces</button>
+                    </div>
+
+                    <!-- Grouped pane -->
+                    <div id="paneGrouped">
+                        <div style="font-size:0.85rem; color:#6b7280; margin-bottom:6px;">
+                            Tip: If same spec qty=5, you can deliver 3 by entering quantity.
+                        </div>
+
+                        <div class="table-wrapper" style="max-height:360px; overflow:auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Line</th>
+                                        <th>Size</th>
+                                        <th>Type</th>
+                                        <th>Ready</th>
+                                        <th>Delivered</th>
+                                        <th>Remaining</th>
+                                        <th>Deliver now</th>
+                                        <th>Preview</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="groupBody">
+                                    <!-- injected -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+                            <div style="font-size:0.85rem; color:#6b7280;">
+                                Selected for this DN: <strong id="selectedQty">0</strong> piece(s)
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-ghost" id="resetQtyBtn" type="button">Reset quantities</button>
+                                <button class="btn btn-primary" id="confirmGroupedBtn" type="button">Confirm Delivery
+                                    Note</button>
+                            </div>
+                        </div>
+
+                        <div class="station-status-message info" id="groupMsg" style="margin-top:10px;">
+                            Only READY quantities can be delivered.
+                        </div>
+                    </div>
+
+                    <!-- Pieces pane -->
+                    <div id="panePieces" style="display:none;">
+                        <div style="font-size:0.85rem; color:#6b7280; margin-bottom:6px;">
+                            Choose specific READY pieces by ID (optional).
+                        </div>
+
+                        <div class="table-wrapper" style="max-height:360px; overflow:auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Glass #</th>
+                                        <th>Line</th>
+                                        <th>Size</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Track</th>
+                                        <th>Deliver now</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="piecesBody">
+                                    <!-- injected -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+                            <div style="font-size:0.85rem; color:#6b7280;">
+                                Selected for this DN: <strong id="selectedPiecesCount">0</strong> piece(s)
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-ghost" id="clearPiecesBtn" type="button">Clear</button>
+                                <button class="btn btn-primary" id="confirmPiecesBtn" type="button">Confirm Delivery
+                                    Note</button>
+                            </div>
+                        </div>
+
+                        <div class="station-status-message info" id="piecesMsg" style="margin-top:10px;">
+                            Only READY pieces can be delivered.
+                        </div>
+                    </div>
+
+                    <!-- Delivery History -->
+                    <div style="margin-top:14px;">
+                        <div class="field-label">Delivery history</div>
+                        <div class="table-wrapper" style="max-height:220px; overflow:auto;">
+                            <table class="table table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>DN #</th>
+                                        <th>Date</th>
+                                        <th>Driver</th>
+                                        <th>Delivered</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyBody">
+                                    <!-- injected -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Track modal (piece) -->
+    <div class="modal-backdrop" id="trackModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Piece tracking</div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="trackMeta">—</div>
+                </div>
+                <button class="modal-close" id="trackCloseBtn">×</button>
+            </div>
+
+            <div class="station-status-message info" id="trackBox">—</div>
+            <div style="margin-top:10px; font-size:0.85rem; color:#6b7280;">
+                Demo view. Later: show full history (time, operator, station).
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview modal (group) -->
+    <div class="modal-backdrop" id="previewModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">READY pieces preview</div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="previewMeta">—</div>
+                </div>
+                <button class="modal-close" id="previewCloseBtn">×</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <input class="input" id="previewSearch" placeholder="Search glass #" />
+                <span class="badge" id="previewCount">0</span>
+            </div>
+
+            <div class="table-wrapper" style="max-height:320px; overflow:auto;">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Glass #</th>
+                            <th>Stage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/delivery.js"></script>
+</body>
+
+</html>

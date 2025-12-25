@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<script>
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const token = localStorage.getItem("token");
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("logout") === "1") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.replace("/index.html?logout=1");
+    }
+
+    if (!user || !token) {
+        window.location.replace("/index.html?logout=1");
+    } else {
+        const current = location.pathname.split("/").pop() || "index.html";
+        if (user.homePage && user.homePage !== current) {
+            window.location.replace("/" + user.homePage);
+        }
+    }
+</script>
+
+
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Manager Dashboard</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- إضافات صغيرة (فيك تحطهن بـ style.css لاحقاً) -->
+    <style>
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-icon {
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(226, 232, 240, .9);
+            background: #fff;
+            cursor: pointer;
+            font-size: .8rem;
+            color: #374151;
+        }
+
+        .btn-icon:hover {
+            background: #f9fafb;
+        }
+
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        @media (max-width:1100px) {
+            .quick-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width:520px) {
+            .quick-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .quick-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .quick-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .quick-title {
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .quick-sub {
+            font-size: .78rem;
+            color: #6b7280;
+        }
+
+        .quick-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .notif-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 999px;
+            font-size: .72rem;
+            font-weight: 600;
+            background: #ef4444;
+            color: #fff;
+            margin-left: 6px;
+        }
+
+        .mini-bar {
+            height: 10px;
+            border-radius: 999px;
+            background: #f3f4f6;
+            overflow: hidden;
+            border: 1px solid rgba(226, 232, 240, .9);
+        }
+
+        .mini-bar>span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            width: 0%;
+        }
+
+        .link-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            color: #2563eb;
+            font-weight: 600;
+            font-size: .82rem;
+        }
+
+        .link-btn:hover {
+            text-decoration: underline;
+        }
+
+        .order-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .order-progress .pct {
+            font-size: .75rem;
+            color: #6b7280;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .order-progress .mini-bar {
+            flex: 1;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width:1100px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .tl-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: #f9fafb;
+            border: 1px solid rgba(226, 232, 240, .9);
+            font-size: .82rem;
+        }
+
+        .tl-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .tl-stage {
+            font-weight: 600;
+        }
+
+        .tl-meta {
+            color: #6b7280;
+            font-size: .76rem;
+        }
+
+        .tl-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: .72rem;
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .pill.blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .pill.green {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .pill.red {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .pill.orange {
+            background: #ffedd5;
+            color: #b45309;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar (Manager) -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="manager-dashboard.html" class="nav-item active">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
+                </a>
+
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+
+                <a href="workflow.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Workflow</span>
+                </a>
+
+                <a href="audit.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Audit Log</span>
+                </a>
+
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                    <span class="notif-badge" id="notifBadge" title="Unread notifications">3</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Manager Overview</div>
+                    <div class="main-subtitle">Full production control: orders, stages, breakage, deliveries & audit
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <span class="chip" id="chipUser">User: Manager</span>
+                    <span class="badge" id="chipFactory">Factory: Tripoli</span>
+                    <span class="badge" id="chipLastUpdate">Last update: --:--</span>
+                    <button class="btn-icon" id="refreshBtn" type="button">⟳ Refresh</button>
+                    <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">
+                        Open Live Board
+                    </button>
+                    <button type="button" id="logoutBtn" class="btn btn-ghost">
+                        Logout
+                    </button>
+
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Today’s KPIs</div>
+                        <div class="card-subtitle">Live numbers (front demo now — backend later)</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Orders created today</div>
+                        <div class="stat-value" id="kpiOrdersToday">0</div>
+                        <div class="stat-chip" id="kpiOrdersTodayChip">—</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Active orders</div>
+                        <div class="stat-value" id="kpiActiveOrders">0</div>
+                        <div class="stat-chip">In production</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">WIP pieces</div>
+                        <div class="stat-value" id="kpiWipPieces">0</div>
+                        <div class="stat-chip">Across all stages</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Completed today</div>
+                        <div class="stat-value" id="kpiCompletedToday">0</div>
+                        <div class="stat-chip">Ready / Delivered</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Broken today</div>
+                        <div class="stat-value" id="kpiBrokenToday">0</div>
+                        <div class="stat-chip" style="background:#fee2e2; color:#b91c1c;">Track reasons</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Delivery ready</div>
+                        <div class="stat-value" id="kpiDeliveryReady">0</div>
+                        <div class="stat-chip">Packing done</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Urgent actions -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Urgent actions</div>
+                        <div class="card-subtitle">Click to fix issues fast</div>
+                    </div>
+                </div>
+
+                <div class="quick-grid">
+                    <div class="card quick-card">
+                        <div class="quick-top">
+                            <div>
+                                <div class="quick-title">Draft waiting activation</div>
+                                <div class="quick-sub">Orders imported but not released</div>
+                            </div>
+                            <span class="pill blue">Planner</span>
+                        </div>
+                        <div class="quick-value" id="urgentDraft">0</div>
+                        <div class="quick-actions">
+                            <button class="btn btn-primary btn-small" type="button"
+                                onclick="window.location.href='activation.html'">Open activation</button>
+                            <button class="btn btn-ghost btn-small" type="button"
+                                onclick="openFilteredOrders('Draft')">View list</button>
+                        </div>
+                    </div>
+
+                    <div class="card quick-card">
+                        <div class="quick-top">
+                            <div>
+                                <div class="quick-title">Late / at-risk orders</div>
+                                <div class="quick-sub">Due soon or delayed in stages</div>
+                            </div>
+                            <span class="pill red">Attention</span>
+                        </div>
+                        <div class="quick-value" id="urgentLate">0</div>
+                        <div class="quick-actions">
+                            <button class="btn btn-primary btn-small" type="button"
+                                onclick="window.location.href='reports.html'">Open report</button>
+                            <button class="btn btn-ghost btn-small" type="button"
+                                onclick="openFilteredOrders('Delayed')">View list</button>
+                        </div>
+                    </div>
+
+                    <div class="card quick-card">
+                        <div class="quick-top">
+                            <div>
+                                <div class="quick-title">High breakage stage</div>
+                                <div class="quick-sub">Today breakage above threshold</div>
+                            </div>
+                            <span class="pill orange">Quality</span>
+                        </div>
+                        <div class="quick-value" id="urgentBreakStage">—</div>
+                        <div class="quick-actions">
+                            <button class="btn btn-primary btn-small" type="button"
+                                onclick="window.location.href='reports.html#broken'">Broken report</button>
+                            <button class="btn btn-ghost btn-small" type="button" onclick="scrollToAlerts()">See
+                                alerts</button>
+                        </div>
+                    </div>
+
+                    <div class="card quick-card">
+                        <div class="quick-top">
+                            <div>
+                                <div class="quick-title">Ready deliveries</div>
+                                <div class="quick-sub">Orders ready for partial/full shipment</div>
+                            </div>
+                            <span class="pill green">Delivery</span>
+                        </div>
+                        <div class="quick-value" id="urgentReadyDelivery">0</div>
+                        <div class="quick-actions">
+                            <button class="btn btn-primary btn-small" type="button"
+                                onclick="window.location.href='delivery.html'">Open delivery</button>
+                            <button class="btn btn-ghost btn-small" type="button"
+                                onclick="openFilteredOrders('Delivery Ready')">View list</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent orders + Order modal -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Recent orders</div>
+                        <div class="card-subtitle">Click “Open” to see progress & timeline</div>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input class="input" id="orderSearch" style="max-width:260px;"
+                            placeholder="Search order / client..." />
+                        <button class="btn btn-primary" type="button" onclick="window.location.href='orders.html'">View
+                            all</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Client</th>
+                                <th>Qty</th>
+                                <th>Current stage</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                                <th>Due</th>
+                                <th>Last update</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Stage load + Alerts + Latest activity -->
+            <section class="two-col">
+                <!-- Stage load -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Stage load</div>
+                            <div class="card-subtitle">Waiting / in progress / broken today (per stage)</div>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="table table-compact">
+                            <thead>
+                                <tr>
+                                    <th>Stage</th>
+                                    <th>Waiting</th>
+                                    <th>In progress</th>
+                                    <th>Broken</th>
+                                    <th>Load</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stageLoadBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="live-legend" style="margin-top:10px;">
+                        <div class="live-legend-item"><span class="live-legend-dot blue"></span> Load bar</div>
+                        <div class="live-legend-item"><span class="live-legend-dot red"></span> Broken alert</div>
+                        <div class="live-legend-item"><span class="live-legend-dot gray"></span> Normal</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- Alerts -->
+                    <div class="card" id="alertsSection">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Alerts</div>
+                                <div class="card-subtitle">Issues that need attention</div>
+                            </div>
+                            <button class="btn btn-ghost" type="button"
+                                onclick="window.location.href='notifications.html'">Open notifications</button>
+                        </div>
+
+                        <div class="alerts-list" id="alertsList"></div>
+                    </div>
+
+                    <!-- Latest activity (Audit snippet) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Latest activity</div>
+                                <div class="card-subtitle">Mini audit log (who did what)</div>
+                            </div>
+                            <button class="btn btn-ghost" type="button" onclick="window.location.href='audit.html'">View
+                                full audit</button>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table class="table table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                        <th>Target</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal-backdrop" id="orderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">Order #---</div>
+                    <div style="font-size:0.8rem; color:#6b7280;" id="modalMeta">—</div>
+                </div>
+                <button class="modal-close" id="modalCloseBtn" type="button">×</button>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                <span class="pill blue" id="modalStatusPill">Status</span>
+                <span class="pill" id="modalStagePill">Stage</span>
+                <span class="pill" id="modalDuePill">Due</span>
+                <span class="pill red" id="modalBrokenPill">Broken</span>
+            </div>
+
+            <div class="timeline" id="modalTimeline"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                <button class="btn btn-ghost" type="button" onclick="window.location.href='orders.html'">Open in
+                    Orders</button>
+                <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">Open
+                    Live Tracking</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById("logoutBtn");
+        logoutBtn?.addEventListener("click", () => {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/index.html";
+        });
+
+        // ===== Demo Data (later replace with backend) =====
+        const STAGES = ["Cutting", "Grinding", "Washing", "Furnace", "Packing", "Delivery"];
+
+        const orders = [
+            {
+                orderNo: "580",
+                client: "ALEXCO",
+                qty: 100,
+                stage: "Furnace",
+                status: "Active",
+                due: "2025-12-28",
+                lastUpdate: "09:42",
+                progressPct: 62,
+                createdToday: true,
+                brokenToday: 3,
+                stageCounts: { Cutting: 0, Grinding: 0, Washing: 0, Furnace: 18, Packing: 0, Delivery: 0 }
+            },
+            {
+                orderNo: "612",
+                client: "Ziad Co",
+                qty: 40,
+                stage: "Cutting",
+                status: "Delayed",
+                due: "2025-12-22",
+                lastUpdate: "09:10",
+                progressPct: 18,
+                createdToday: false,
+                brokenToday: 5,
+                stageCounts: { Cutting: 22, Grinding: 0, Washing: 0, Furnace: 0, Packing: 0, Delivery: 0 }
+            },
+            {
+                orderNo: "700",
+                client: "Maison",
+                qty: 12,
+                stage: "Packing",
+                status: "Delivery Ready",
+                due: "2025-12-24",
+                lastUpdate: "08:55",
+                progressPct: 95,
+                createdToday: true,
+                brokenToday: 0,
+                stageCounts: { Cutting: 0, Grinding: 0, Washing: 0, Furnace: 0, Packing: 1, Delivery: 11 }
+            },
+            {
+                orderNo: "581",
+                client: "TEMPO SHOWROOM",
+                qty: 4,
+                stage: "Delivery",
+                status: "Completed",
+                due: "2025-12-27",
+                lastUpdate: "08:20",
+                progressPct: 100,
+                createdToday: true,
+                brokenToday: 0,
+                stageCounts: { Cutting: 0, Grinding: 0, Washing: 0, Furnace: 0, Packing: 0, Delivery: 0 }
+            },
+            {
+                orderNo: "579",
+                client: "PROJECT ALPHA",
+                qty: 20,
+                stage: "—",
+                status: "Draft",
+                due: "2025-12-26",
+                lastUpdate: "07:50",
+                progressPct: 0,
+                createdToday: false,
+                brokenToday: 0,
+                stageCounts: { Cutting: 0, Grinding: 0, Washing: 0, Furnace: 0, Packing: 0, Delivery: 0 }
+            },
+        ];
+
+        const stageLoad = [
+            { stage: "Cutting", waiting: 12, inProgress: 4, broken: 7 },
+            { stage: "Grinding", waiting: 8, inProgress: 3, broken: 1 },
+            { stage: "Washing", waiting: 5, inProgress: 1, broken: 0 },
+            { stage: "Furnace", waiting: 2, inProgress: 6, broken: 2 },
+            { stage: "Packing", waiting: 1, inProgress: 2, broken: 0 },
+        ];
+
+        const alerts = [
+            { type: "danger", title: "Order 612 delayed in Cutting", meta: "Delay: 1h 20m · Stage: Cutting" },
+            { type: "warning", title: "High breakage in Cutting", meta: "Broken today: 7 pcs · Target: < 3" },
+            { type: "info", title: "Station CUT-02 inactive", meta: "No activity in the last 30 minutes" },
+        ];
+
+        const audit = [
+            { time: "09:44", user: "Ahmed", action: "DONE", target: "Glass 580-F1-12 at Furnace" },
+            { time: "09:41", user: "Ziad", action: "ACTIVATE", target: "Order 580 (Lines 1,2)" },
+            { time: "09:35", user: "Amani", action: "IMPORT", target: "Order 700 from Noria" },
+            { time: "09:28", user: "Mohammad", action: "BROKEN", target: "Glass 612-F2-07 (Cutting)" },
+            { time: "09:10", user: "Delivery", action: "SHIP", target: "DN-0012 for Order 581 (partial)" },
+        ];
+
+        // ===== Helpers =====
+        function setLastUpdateNow() {
+            const d = new Date();
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mm = String(d.getMinutes()).padStart(2, "0");
+            document.getElementById("chipLastUpdate").textContent = `Last update: ${hh}:${mm}`;
+        }
+
+        function pillForStatus(status) {
+            const s = (status || "").toLowerCase();
+            if (s.includes("delayed")) return "status-pill status-delayed";
+            if (s.includes("completed")) return "status-pill status-completed";
+            if (s.includes("active") || s.includes("ready")) return "status-pill status-in-progress";
+            return "status-pill status-not-started";
+        }
+
+        function computeKpis() {
+            const ordersToday = orders.filter(o => o.createdToday).length;
+            const active = orders.filter(o => o.status === "Active").length;
+            const completedToday = orders.filter(o => o.status === "Completed" || o.status === "Delivery Ready").length;
+            const brokenToday = stageLoad.reduce((sum, s) => sum + (s.broken || 0), 0);
+            const deliveryReady = orders.filter(o => o.status === "Delivery Ready").length;
+            const draft = orders.filter(o => o.status === "Draft").length;
+
+            // WIP pieces = مجموع waiting + inProgress من stageLoad
+            const wip = stageLoad.reduce((sum, s) => sum + s.waiting + s.inProgress, 0);
+
+            document.getElementById("kpiOrdersToday").textContent = ordersToday;
+            document.getElementById("kpiOrdersTodayChip").textContent = ordersToday ? `+${Math.max(1, Math.floor(ordersToday / 2))} vs yesterday` : "No change";
+
+            document.getElementById("kpiActiveOrders").textContent = active;
+            document.getElementById("kpiWipPieces").textContent = wip;
+            document.getElementById("kpiCompletedToday").textContent = completedToday;
+            document.getElementById("kpiBrokenToday").textContent = brokenToday;
+            document.getElementById("kpiDeliveryReady").textContent = deliveryReady;
+
+            // Urgent
+            document.getElementById("urgentDraft").textContent = draft;
+            document.getElementById("urgentLate").textContent = orders.filter(o => o.status === "Delayed").length;
+            document.getElementById("urgentReadyDelivery").textContent = deliveryReady;
+
+            // High breakage stage
+            const maxBreak = stageLoad.reduce((best, s) => (s.broken > best.broken ? s : best), stageLoad[0]);
+            document.getElementById("urgentBreakStage").textContent = `${maxBreak.stage} (${maxBreak.broken})`;
+        }
+
+        function renderRecentOrders() {
+            const body = document.getElementById("recentOrdersBody");
+            const q = (document.getElementById("orderSearch").value || "").trim().toLowerCase();
+
+            const list = orders
+                .filter(o => (o.orderNo + " " + o.client).toLowerCase().includes(q))
+                .slice(0, 10);
+
+            body.innerHTML = list.map(o => `
+        <tr class="${o.status === "Delayed" ? "row-delayed" : ""}">
+          <td><strong>${o.orderNo}</strong></td>
+          <td>${o.client}</td>
+          <td>${o.qty}</td>
+          <td>${o.stage}</td>
+          <td>
+            <div class="order-progress">
+              <div class="mini-bar"><span style="width:${o.progressPct}%;"></span></div>
+              <div class="pct">${o.progressPct}%</div>
+            </div>
+          </td>
+          <td><span class="${pillForStatus(o.status)}">${o.status}</span></td>
+          <td>${o.due}</td>
+          <td>${o.lastUpdate}</td>
+          <td><button class="link-btn" data-open-order="${o.orderNo}" type="button">Open</button></td>
+        </tr>
+      `).join("") || `
+        <tr><td colspan="9" style="color:#6b7280; font-size:.85rem;">No orders found.</td></tr>
+      `;
+        }
+
+        function renderStageLoad() {
+            const body = document.getElementById("stageLoadBody");
+            const maxLoad = Math.max(...stageLoad.map(s => s.waiting + s.inProgress));
+
+            body.innerHTML = stageLoad.map(s => {
+                const load = s.waiting + s.inProgress;
+                const pct = maxLoad ? Math.round((load / maxLoad) * 100) : 0;
+                const brokenCell = s.broken > 3 ? `<span class="pill red">${s.broken}</span>` : `<span class="pill">${s.broken}</span>`;
+
+                return `
+          <tr>
+            <td><strong>${s.stage}</strong></td>
+            <td>${s.waiting}</td>
+            <td>${s.inProgress}</td>
+            <td>${brokenCell}</td>
+            <td>
+              <div class="mini-bar" title="Load ${pct}%">
+                <span style="width:${pct}%;"></span>
+              </div>
+            </td>
+          </tr>
+        `;
+            }).join("");
+        }
+
+        function renderAlerts() {
+            const list = document.getElementById("alertsList");
+            list.innerHTML = alerts.map(a => `
+        <div class="alert-item alert-${a.type}">
+          <div class="alert-dot alert-${a.type}-dot"></div>
+          <div>
+            <div class="alert-title">${a.title}</div>
+            <div class="alert-meta">${a.meta}</div>
+          </div>
+        </div>
+      `).join("");
+        }
+
+        function renderAudit() {
+            const body = document.getElementById("auditBody");
+            body.innerHTML = audit.slice(0, 6).map(x => `
+        <tr>
+          <td>${x.time}</td>
+          <td>${x.user}</td>
+          <td><span class="pill blue">${x.action}</span></td>
+          <td>${x.target}</td>
+        </tr>
+      `).join("");
+        }
+
+        // ===== Modal (Order details) =====
+        const orderModal = document.getElementById("orderModal");
+        const modalCloseBtn = document.getElementById("modalCloseBtn");
+
+        function openOrderModal(orderNo) {
+            const o = orders.find(x => x.orderNo === orderNo);
+            if (!o) return;
+
+            document.getElementById("modalTitle").textContent = `Order #${o.orderNo}`;
+            document.getElementById("modalMeta").textContent = `${o.client} • Qty: ${o.qty} • Progress: ${o.progressPct}%`;
+
+            const statusPill = document.getElementById("modalStatusPill");
+            statusPill.textContent = o.status;
+            statusPill.className = "pill " + (o.status === "Delayed" ? "red" : (o.status === "Completed" ? "green" : "blue"));
+
+            const stagePill = document.getElementById("modalStagePill");
+            stagePill.textContent = `Stage: ${o.stage}`;
+            stagePill.className = "pill blue";
+
+            const duePill = document.getElementById("modalDuePill");
+            duePill.textContent = `Due: ${o.due}`;
+            duePill.className = "pill";
+
+            const brokenPill = document.getElementById("modalBrokenPill");
+            brokenPill.textContent = `Broken today: ${o.brokenToday}`;
+            brokenPill.className = "pill " + (o.brokenToday ? "red" : "green");
+
+            // Timeline
+            const tl = document.getElementById("modalTimeline");
+            const counts = o.stageCounts || {};
+            const steps = ["Cutting", "Grinding", "Washing", "Furnace", "Packing", "Delivery"];
+            tl.innerHTML = steps.map(st => {
+                const c = counts[st] || 0;
+                const label = c ? `${c} pcs` : "—";
+                const cls = st === o.stage ? "pill blue" : "pill";
+                return `
+          <div class="tl-item">
+            <div class="tl-left">
+              <div class="tl-stage">${st}</div>
+              <div class="tl-meta">Queue / in progress snapshot</div>
+            </div>
+            <div class="tl-right">
+              <span class="${cls}">${label}</span>
+            </div>
+          </div>
+        `;
+            }).join("");
+
+            orderModal.classList.add("active");
+        }
+
+        function closeOrderModal() {
+            orderModal.classList.remove("active");
+        }
+
+        modalCloseBtn.addEventListener("click", closeOrderModal);
+
+        document.getElementById("recentOrdersBody").addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-open-order]");
+            if (!btn) return;
+            openOrderModal(btn.dataset.openOrder);
+        });
+
+        document.getElementById("orderSearch").addEventListener("input", renderRecentOrders);
+
+        // ===== Quick actions helpers (front) =====
+        function openFilteredOrders(status) {
+            // لاحقاً: نمرر filter بالـ URL
+            // مثال: orders.html?status=Draft
+            window.location.href = `orders.html?status=${encodeURIComponent(status)}`;
+        }
+
+        function scrollToAlerts() {
+            document.getElementById("alertsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // ===== Refresh (front only) =====
+        document.getElementById("refreshBtn").addEventListener("click", () => {
+            setLastUpdateNow();
+            // لاحقاً: fetch() وتحديث البيانات
+        });
+
+        // ===== Init =====
+        setLastUpdateNow();
+        computeKpis();
+        renderRecentOrders();
+        renderStageLoad();
+        renderAlerts();
+        renderAudit();
+    </script>
+</body>
+
+</html>
