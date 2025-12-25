@@ -7,6 +7,7 @@
     <title>Glass Tracking – Intake / Planning (Ziad)</title>
     <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <script>
     (() => {
         const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -26,8 +27,6 @@
         }
 
         const current = location.pathname.split("/").pop() || "index.html";
-
-        // ✅ نفس منطق import-orders
         if (user.homePage && user.homePage !== current) {
             window.location.replace("/" + user.homePage);
         }
@@ -59,12 +58,9 @@
                 <a href="import-orders.html" class="nav-item">
                     <div class="nav-item-icon"></div><span>Import (Amani)</span>
                 </a>
-
-                <!-- نفس الصفحة بس اسمها Intake -->
                 <a href="activation.html" class="nav-item active">
                     <div class="nav-item-icon"></div><span>Intake / Planning (Ziad)</span>
                 </a>
-
                 <a href="users.html" class="nav-item">
                     <div class="nav-item-icon"></div><span>Users</span>
                 </a>
@@ -81,18 +77,20 @@
         <main class="main">
             <header class="main-header">
                 <div>
-                    <div class="main-title">Production Intake & Planning</div>
+                    <div class="main-title">Production Intake &amp; Planning</div>
                     <div class="main-subtitle">
-                        Ziad – choose which orders/lines go to factory now (creates pieces & pushes to CUTTING queue).
+                        Ziad – choose which orders/lines go to factory now (creates pieces &amp; pushes to CUTTING
+                        queue).
                     </div>
                 </div>
                 <div class="main-header-right">
-                    <span class="chip">User: Ziad</span>
+                    <span class="chip" id="userChip">User: —</span>
                 </div>
             </header>
 
-            <!-- Status line (like station) -->
-            <div class="station-status-message info" id="plannerStatus">Waiting for action…</div>
+            <div class="station-status-message info" id="plannerStatus">
+                Waiting for action…
+            </div>
 
             <!-- KPIs -->
             <section class="card">
@@ -152,6 +150,8 @@
                         <input type="checkbox" id="draftOnlyToggle" checked />
                         Show only Draft waiting intake
                     </label>
+
+                    <button class="btn btn-ghost" id="refreshBtn">Refresh</button>
                 </div>
             </section>
 
@@ -160,7 +160,7 @@
                 <div class="card-header">
                     <div>
                         <div class="card-title">Orders</div>
-                        <div class="card-subtitle">Open an order → choose lines/qty → Send to Factory</div>
+                        <div class="card-subtitle">Open an order → plan intake → Send to Factory</div>
                     </div>
                 </div>
 
@@ -186,56 +186,6 @@
                 </div>
             </section>
         </main>
-    </div>
-
-    <!-- Review / Planning Modal -->
-    <div class="modal-backdrop" id="reviewModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-title">Plan intake for Order <span id="modalOrderId">—</span></div>
-                    <div style="font-size:0.8rem; color:#6b7280;" id="modalMeta">—</div>
-                </div>
-                <button class="modal-close" id="closeModalBtn">×</button>
-            </div>
-
-            <div style="font-size:0.8rem; margin-bottom:8px; color:#6b7280;">
-                Select lines + qty to activate now (this creates pieces & sends them to CUTTING queue).
-            </div>
-
-            <div class="station-status-message info" id="modalStatus">Tip: you can activate partially (qty less than
-                total).</div>
-
-            <div class="table-wrapper" style="max-height:280px; overflow:auto; margin-top:8px;">
-                <table class="table table-compact">
-                    <thead>
-                        <tr>
-                            <th>Line</th>
-                            <th>Ref</th>
-                            <th>Description</th>
-                            <th>Total Qty</th>
-                            <th>Already activated</th>
-                            <th>Activate now</th>
-                            <th>Priority</th>
-                            <th>Go?</th>
-                        </tr>
-                    </thead>
-                    <tbody id="linesBody">
-                        <!-- injected -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;">
-                <div style="font-size:0.8rem; color:#6b7280;">
-                    <span id="modalTotals">—</span>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
-                    <button class="btn btn-primary" id="activateBtn">Send to Factory</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="js/intake.js"></script>

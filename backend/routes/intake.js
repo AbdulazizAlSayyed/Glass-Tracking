@@ -1,31 +1,27 @@
-// backend/routes/intake.js
 const router = require("express").Router();
 const pool = require("../db");
 
-// -------- helpers --------
 function clampInt(v, min, max, def) {
   const n = parseInt(v, 10);
   if (!Number.isFinite(n)) return def;
   return Math.max(min, Math.min(max, n));
 }
-
 function likeQ(q) {
   return `%${String(q || "").trim()}%`;
 }
 
-// -------- GET: KPIs --------
+// KPIs
 router.get("/kpis", async (req, res, next) => {
   try {
     const [rows] = await pool.execute(
       `
       SELECT
-        SUM(o.status = 'Draft')     AS draft_count,
-        SUM(o.status = 'Active')    AS active_count,
-        SUM(o.status = 'Paused')    AS paused_count
+        SUM(o.status = 'Draft')  AS draft_count,
+        SUM(o.status = 'Active') AS active_count,
+        SUM(o.status = 'Paused') AS paused_count
       FROM orders o
       `
     );
-
     const r = rows[0] || {};
     res.json({
       ok: true,
@@ -33,7 +29,6 @@ router.get("/kpis", async (req, res, next) => {
         draft: Number(r.draft_count || 0),
         active: Number(r.active_count || 0),
         paused: Number(r.paused_count || 0),
-        // piecesToday تحتاج created_at بجدول pieces - حالياً 0
         piecesToday: 0,
       },
     });
@@ -42,8 +37,7 @@ router.get("/kpis", async (req, res, next) => {
   }
 });
 
-// -------- GET: Orders list for intake --------
-// /api/intake/orders?status=all|draft|active|paused|completed&q=...&draftOnly=1&page=1&limit=20
+// Orders list
 router.get("/orders", async (req, res, next) => {
   try {
     const status = String(req.query.status || "all").toLowerCase();
@@ -89,14 +83,10 @@ router.get("/orders", async (req, res, next) => {
         o.created_at,
         o.delivery_date,
         o.status,
-
         (SELECT COUNT(*) FROM order_lines ol WHERE ol.order_id = o.id) AS total_lines,
-
         (SELECT COUNT(DISTINCT gp.line_id)
-          FROM glass_pieces gp
-          WHERE gp.order_id = o.id
-        ) AS activated_lines
-
+           FROM glass_pieces gp
+           WHERE gp.order_id = o.id) AS activated_lines
       FROM orders o
       ${whereSql}
       ORDER BY o.created_at DESC
@@ -104,15 +94,13 @@ router.get("/orders", async (req, res, next) => {
     `;
 
     const [rows] = await pool.execute(sql, params);
-
     res.json({ ok: true, orders: rows, page, limit });
   } catch (e) {
     next(e);
   }
 });
 
-// -------- GET: Order lines (with activated qty) --------
-// /api/intake/orders/:orderId/lines
+// Order lines
 router.get("/orders/:orderId/lines", async (req, res, next) => {
   try {
     const orderId = clampInt(req.params.orderId, 1, 999999999, null);
@@ -128,11 +116,7 @@ router.get("/orders/:orderId/lines", async (req, res, next) => {
         ol.size,
         ol.glass_type,
         ol.notes,
-        (
-          SELECT COUNT(*)
-          FROM glass_pieces gp
-          WHERE gp.line_id = ol.id
-        ) AS activated_qty
+        (SELECT COUNT(*) FROM glass_pieces gp WHERE gp.line_id = ol.id) AS activated_qty
       FROM order_lines ol
       WHERE ol.order_id = ?
       ORDER BY ol.id ASC
@@ -146,8 +130,7 @@ router.get("/orders/:orderId/lines", async (req, res, next) => {
   }
 });
 
-// -------- POST: Activate lines (create missing pieces) --------
-// body: { orderId, lines: [{ lineId, activateQty, priority, go }] }
+// Activate lines
 router.post("/activate", async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -168,7 +151,6 @@ router.post("/activate", async (req, res, next) => {
 
     const orderNo = ordRows[0].order_no;
 
-    // first station (stage_order=1)
     const [stRows] = await conn.execute(
       `SELECT id FROM stations WHERE stage_order = 1 ORDER BY id ASC LIMIT 1`
     );
@@ -185,10 +167,8 @@ router.post("/activate", async (req, res, next) => {
 
       const lineId = clampInt(x.lineId, 1, 999999999, null);
       const activateQty = clampInt(x.activateQty, 0, 999999999, 0);
-
       if (!lineId || activateQty <= 0) continue;
 
-      // line total qty
       const [lineRows] = await conn.execute(
         `SELECT id, line_code, qty FROM order_lines WHERE id = ? AND order_id = ? LIMIT 1`,
         [lineId, orderId]
@@ -198,7 +178,6 @@ router.post("/activate", async (req, res, next) => {
       const lineCode = lineRows[0].line_code || `L${lineId}`;
       const totalQty = Number(lineRows[0].qty || 0);
 
-      // already created pieces for that line
       const [cntRows] = await conn.execute(
         `SELECT COUNT(*) AS c FROM glass_pieces WHERE line_id = ?`,
         [lineId]
@@ -207,29 +186,22 @@ router.post("/activate", async (req, res, next) => {
 
       const remaining = Math.max(0, totalQty - already);
       const toCreate = Math.min(activateQty, remaining);
-
       if (toCreate <= 0) continue;
 
-      // create missing pieces
       for (let i = 1; i <= toCreate; i++) {
-        const seq = already + i; // continue numbering
+        const seq = already + i;
         const pieceCode = `${orderNo}-${lineCode}-${seq}`;
-
         await conn.execute(
-          `
-          INSERT INTO glass_pieces (piece_code, order_id, line_id, current_station_id, status)
-          VALUES (?, ?, ?, ?, 'Waiting')
-          `,
+          `INSERT INTO glass_pieces (piece_code, order_id, line_id, current_station_id, status)
+           VALUES (?, ?, ?, ?, 'Waiting')`,
           [pieceCode, orderId, lineId, firstStationId]
         );
-
         createdPieces++;
       }
 
       touchedLines++;
     }
 
-    // if any activation happened -> set Active
     if (createdPieces > 0) {
       await conn.execute(`UPDATE orders SET status = 'Active' WHERE id = ?`, [
         orderId,

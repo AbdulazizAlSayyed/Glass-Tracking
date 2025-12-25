@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass Tracking – Plan Intake</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .io-header-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 900px) {
+            .io-header-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .io-chip-label {
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        .io-chip-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<script>
+    (() => {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const authToken = localStorage.getItem("token");
+        if (!user || !authToken) {
+            window.location.replace("/index.html?logout=1");
+        }
+    })();
+</script>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>Glass Tracking</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Dashboard</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Orders</span>
+                </a>
+                <a href="live-tracking.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Live Tracking</span>
+                </a>
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Reports</span>
+                </a>
+                <a href="import-orders.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Import (Amani)</span>
+                </a>
+                <a href="activation.html" class="nav-item active">
+                    <div class="nav-item-icon"></div><span>Intake / Planning (Ziad)</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Users</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Settings</span>
+                </a>
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div><span>Notifications</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">
+                        Plan intake for Order <span id="ioOrderNo">—</span>
+                    </div>
+                    <div class="main-subtitle" id="ioSubtitle">
+                        Select lines + qty to activate now (creates pieces &amp; sends them to CUTTING queue).
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    <button class="btn btn-ghost" onclick="window.location.href='activation.html'">
+                        ← Back to Intake list
+                    </button>
+                </div>
+            </header>
+
+            <div class="station-status-message info" id="ioStatus">
+                Loading…
+            </div>
+
+            <!-- Order summary -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Order summary</div>
+                        <div class="card-subtitle">Basic information for this order</div>
+                    </div>
+                </div>
+
+                <div class="io-header-grid">
+                    <div>
+                        <div class="io-chip-label">Order #</div>
+                        <div class="io-chip-value" id="ioSummaryOrder">—</div>
+                    </div>
+                    <div>
+                        <div class="io-chip-label">Client</div>
+                        <div class="io-chip-value" id="ioSummaryClient">—</div>
+                    </div>
+                    <div>
+                        <div class="io-chip-label">PRF</div>
+                        <div class="io-chip-value" id="ioSummaryPrf">—</div>
+                    </div>
+                    <div>
+                        <div class="io-chip-label">Delivery date</div>
+                        <div class="io-chip-value" id="ioSummaryDelivery">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Controls + table -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Lines to activate</div>
+                        <div class="card-subtitle">Choose qty / thickness then click “Send to Factory”.</div>
+                    </div>
+                </div>
+
+                <!-- Bulk controls -->
+                <div
+                    style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px; font-size:0.8rem;">
+                    <button class="btn btn-ghost" id="ioBulkAllBtn">
+                        Activate all remaining (full order)
+                    </button>
+
+                    <select class="input" id="ioBulkThicknessSelect" style="max-width:220px;">
+                        <option value="">Activate by thickness…</option>
+                    </select>
+
+                    <button class="btn btn-ghost" id="ioBulkThicknessBtn">
+                        Apply thickness group
+                    </button>
+
+                    <span style="margin-left:auto; color:#6b7280;">
+                        <span id="ioTotals">Selected lines: 0 | Pieces to activate now: 0</span>
+                    </span>
+                </div>
+
+                <div class="table-wrapper" style="max-height:420px; overflow:auto;">
+                    <table class="table table-compact">
+                        <thead>
+                            <tr>
+                                <th>Line</th>
+                                <th>Ref</th>
+                                <th>Description / Thickness</th>
+                                <th>Total Qty</th>
+                                <th>Already activated</th>
+                                <th>Activate now</th>
+                                <th>Priority</th>
+                                <th>Go?</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ioLinesBody">
+                            <!-- injected -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+                    <button class="btn btn-ghost" onclick="window.location.href='activation.html'">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" id="ioActivateBtn">
+                        Send to Factory
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/intake-order.js"></script>
+</body>
+
+</html>
