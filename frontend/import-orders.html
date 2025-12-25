@@ -32,33 +32,7 @@
 </script>
 
 <body>
-    <div class="app-shell">
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon"></div>
-                <span>Glass Tracking</span>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Dashboard</span>
-                </a>
-                <a href="orders.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Orders</span>
-                </a>
-                <a href="import-orders.html" class="nav-item active">
-                    <div class="nav-item-icon"></div>
-                    <span>Create / Import Orders</span>
-                </a>
-                <a href="notifications.html" class="nav-item">
-                    <div class="nav-item-icon"></div>
-                    <span>Notifications</span>
-                </a>
-            </nav>
-        </aside>
-
+    <div class="app-shell app-shell--no-sidebar">
         <main class="main">
             <header class="main-header">
                 <div>
@@ -67,14 +41,16 @@
                         Sales / Order Creator – Upload file → Preview → Create Draft.
                     </div>
                 </div>
+
                 <div class="main-header-right">
                     <span class="chip" id="userChip">User: —</span>
-                </div>
-                <a href="#" class="nav-item nav-item-logout" id="logoutBtn">
-                    <div class="nav-item-icon"></div>
-                    <span>Logout</span>
-                </a>
 
+                    <!-- زر الـ Logout حطّيناه هون مع اليمين -->
+                    <a href="#" class="nav-item nav-item-logout" id="logoutBtn">
+                        <div class="nav-item-icon"></div>
+                        <span>Logout</span>
+                    </a>
+                </div>
             </header>
 
             <!-- Quick stats -->

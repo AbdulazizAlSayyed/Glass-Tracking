@@ -889,3 +889,10 @@ body {
 .nav-item-logout span {
   font-weight: 600;
 }
+/* لو ما في sidebar على هالصفحة */
+.app-shell--no-sidebar {
+  grid-template-columns: 1fr; /* بدل 260px 1fr */
+}
+.main-header .nav-item-logout {
+  margin-top: 0;
+}
