@@ -10,6 +10,7 @@ const stationsRoutes = require("./routes/stations");
 const ordersRoutes = require("./routes/orders");
 const intakeRoutes = require("./routes/intake");
 const { authRequired } = require("./middleware/auth");
+const managerRoutes = require("./routes/manager");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/orders", authRequired, ordersRoutes);
 app.use("/api/intake", authRequired, intakeRoutes);
 app.use("/api/pieces", authRequired, piecesRoutes);
 app.use("/api/stations", authRequired, stationsRoutes);
+app.use("/api/manager", authRequired, managerRoutes);
 
 // Who am I
 app.get("/api/auth/me", authRequired, async (req, res, next) => {
