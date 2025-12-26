@@ -1,39 +1,141 @@
-// 1. Helper functions أولاً
-// 2. Auto-redirect
-// 3. DOM Ready handler
-// 4. Login handler
-// 5. Logout helper
-// 6. Other helpers
-// 7. Export to window
+/* ================================
+   js/auth.js (UPDATED / SINGLE SOURCE)
+   - Works for: index.html login + all protected pages (activation, plan-intake, etc.)
+   - Fixes the big issue: DON'T force-redirect by homePage (so plan-intake.html won’t bounce back)
+   - Still supports optional role/page restrictions if you want later
+================================ */
 
 // =============================
-// Helper: Get base path
+// 1) Helpers
 // =============================
 function getBasePath() {
   const pathParts = window.location.pathname.split("/");
   const fileName = window.location.pathname.split("/").pop();
-  if (fileName && fileName.includes(".html")) {
-    pathParts.pop();
-  }
+  if (fileName && fileName.includes(".html")) pathParts.pop();
   const base = pathParts.filter(Boolean).join("/");
   return base ? "/" + base + "/" : "/";
 }
 
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function clearAuth() {
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    localStorage.removeItem("station_id");
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn("clearAuth error:", e);
+  }
+}
+
+function isLoginPage() {
+  const p = window.location.pathname.toLowerCase();
+  const file = p.split("/").pop() || "";
+  return p === "/" || file === "" || file === "index.html";
+}
+
+function getAuthHeaders(extra = {}) {
+  const token = getToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
+function isAuthenticated() {
+  const token = getToken();
+  const user = getCurrentUser();
+  return !!(token && user);
+}
+
+// Optional (future): role/page restrictions
+// If you don't want restrictions, keep this as empty object.
+const ROLE_ALLOWED_PAGES = {
+  // مثال (عدّلها إذا بدك):
+  // admin: ["dashboard.html", "orders.html", "activation.html", "plan-intake.html", "live-tracking.html"],
+  // intake: ["activation.html", "plan-intake.html"],
+  // station: ["station.html"]
+};
+
+// Extra allowed pages by "flow" (important for activation -> plan-intake)
+const HOME_FLOW_ALLOW = {
+  "activation.html": ["plan-intake.html"],
+  // add more flows if needed
+  // "orders.html": ["order-details.html"]
+};
+
+function isPageAllowedForUser(user, currentPage) {
+  if (!user) return false;
+
+  const page = (currentPage || "").toLowerCase();
+  const role = String(user.role || "").toLowerCase();
+  const home = String(user.homePage || "").toLowerCase();
+
+  // If role rules exist → enforce them
+  const roleList = ROLE_ALLOWED_PAGES[role];
+  if (Array.isArray(roleList) && roleList.length) {
+    // also allow homePage + flow pages automatically
+    const flowExtra = HOME_FLOW_ALLOW[home] || [];
+    const allowed = new Set(
+      [...roleList, home, ...flowExtra]
+        .filter(Boolean)
+        .map((x) => String(x).toLowerCase())
+    );
+    return allowed.has(page);
+  }
+
+  // No role rules → allow all pages when authenticated
+  // (This is what prevents plan-intake redirect problems.)
+  return true;
+}
+
 // =============================
-// Auto-redirect if already logged in
+// 2) Handle logout param EARLY
 // =============================
 (function () {
   try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    const path = window.location.pathname;
-    const onLoginPage =
-      path === "/" ||
-      path.endsWith("/index.html") ||
-      path === "/index.html" ||
-      path.endsWith("/");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logout") === "1") {
+      clearAuth();
 
-    if (token && user && onLoginPage) {
+      // Stay on login page if already there
+      if (!isLoginPage()) {
+        const basePath = getBasePath();
+        window.location.replace(basePath + "index.html?logout=1");
+      }
+    }
+  } catch (e) {
+    console.warn("logout param handler error:", e);
+  }
+})();
+
+// =============================
+// 3) Auto-redirect if already logged in (only on login page)
+// =============================
+(function () {
+  try {
+    if (!isLoginPage()) return;
+
+    const token = getToken();
+    const user = getCurrentUser();
+
+    // IMPORTANT: if logout=1, do not redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logout") === "1") return;
+
+    if (token && user) {
       const basePath = getBasePath();
       const home = user.homePage || "dashboard.html";
       window.location.replace(basePath + home);
@@ -44,32 +146,35 @@ function getBasePath() {
 })();
 
 // =============================
-// DOM Ready handler
+// 4) Protect non-login pages automatically
 // =============================
-function initAuth() {
-  const loginForm = document.getElementById("loginForm");
-  const logoutBtn = document.getElementById("logoutBtn");
+function protectPage() {
+  if (isLoginPage()) return true;
 
-  if (loginForm) {
-    loginForm.addEventListener("submit", handleLoginSubmit);
+  if (!isAuthenticated()) {
+    clearAuth();
+    const basePath = getBasePath();
+    window.location.replace(basePath + "index.html?logout=1");
+    return false;
   }
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      doLogout();
-    });
-  }
-}
+  const user = getCurrentUser();
+  const currentPage = (
+    window.location.pathname.split("/").pop() || ""
+  ).toLowerCase();
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initAuth);
-} else {
-  initAuth();
+  if (!isPageAllowedForUser(user, currentPage)) {
+    const basePath = getBasePath();
+    const home = user?.homePage || "dashboard.html";
+    window.location.replace(basePath + home);
+    return false;
+  }
+
+  return true;
 }
 
 // =============================
-// Login handler
+// 5) Login handler
 // =============================
 async function handleLoginSubmit(event) {
   event.preventDefault();
@@ -100,7 +205,10 @@ async function handleLoginSubmit(event) {
 
   try {
     const basePath = getBasePath();
-    const apiUrl = basePath.replace(/\/$/, "") + "/api/auth/login";
+    const apiUrl = new URL(
+      basePath + "api/auth/login",
+      window.location.origin
+    ).toString();
 
     const res = await fetch(apiUrl, {
       method: "POST",
@@ -130,7 +238,7 @@ async function handleLoginSubmit(event) {
     localStorage.setItem("user", JSON.stringify(data.user));
 
     const home = data.user?.homePage || "dashboard.html";
-    window.location.href = basePath + home;
+    window.location.replace(basePath + home);
   } catch (e) {
     console.error("Login error:", e);
     if (errorEl) {
@@ -146,90 +254,56 @@ async function handleLoginSubmit(event) {
 }
 
 // =============================
-// Logout helper
+// 6) Logout helper
 // =============================
 function doLogout() {
-  try {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    localStorage.removeItem("station_id");
-    sessionStorage.clear();
-    document.cookie.split(";").forEach((cookie) => {
-      const eqPos = cookie.indexOf("=");
-      const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-    });
-  } catch (e) {
-    console.warn("Logout clean error:", e);
-  }
-
+  clearAuth();
   const basePath = getBasePath();
   window.location.replace(basePath + "index.html?logout=1");
 }
 
 // =============================
-// Helper: get auth headers for API calls
+// 7) DOM Ready init
 // =============================
-function getAuthHeaders(extra = {}) {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
-  };
-}
-
-// =============================
-// Helper: Check if user is authenticated
-// =============================
-function isAuthenticated() {
-  try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return !!(token && user);
-  } catch (e) {
-    return false;
-  }
-}
-
-// =============================
-// Helper: Get current user info
-// =============================
-function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem("user") || "null");
-  } catch (e) {
-    return null;
-  }
-}
-
-// =============================
-// Helper: Protect route - use in other pages
-// =============================
-function requireAuth() {
-  if (!isAuthenticated()) {
-    const basePath = getBasePath();
-    window.location.href = basePath + "index.html";
-    return false;
-  }
+function initAuth() {
+  // Protect page (except login page)
+  if (!protectPage()) return;
 
   const user = getCurrentUser();
-  const currentPage = window.location.pathname.split("/").pop();
 
-  if (user && user.homePage && user.homePage !== currentPage) {
-    const basePath = getBasePath();
-    window.location.href = basePath + user.homePage;
-    return false;
+  // Hook login form if exists
+  const loginForm = document.getElementById("loginForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", handleLoginSubmit);
   }
 
-  return true;
+  // Hook logout button if exists
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      doLogout();
+    });
+  }
+
+  // Fill user chip if exists
+  const userChip = document.getElementById("userChip");
+  if (userChip && user) {
+    userChip.textContent = `User: ${user.username || user.name || "—"}`;
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAuth);
+} else {
+  initAuth();
 }
 
 // =============================
-// Export functions to global scope
+// Export to window
 // =============================
 window.isAuthenticated = isAuthenticated;
 window.getCurrentUser = getCurrentUser;
-window.requireAuth = requireAuth;
 window.getAuthHeaders = getAuthHeaders;
+window.doLogout = doLogout;
+window.protectPage = protectPage;

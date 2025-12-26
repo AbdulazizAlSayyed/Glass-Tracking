@@ -65,8 +65,8 @@ function parseFile(buffer, filename) {
   try {
     const fileExtension = filename.toLowerCase().split(".").pop();
 
+    // ---------- CSV / TXT ----------
     if (fileExtension === "csv" || fileExtension === "txt") {
-      // Parse CSV
       const content = buffer.toString("utf-8");
       const records = parse(content, {
         columns: true,
@@ -77,21 +77,71 @@ function parseFile(buffer, filename) {
       });
 
       records.forEach((row, idx) => {
-        const lineCode = toStr(
-          row["Line Code"] || row["Line"] || row["Code"] || `L${idx + 1}`
-        );
-        const qty = toInt(
-          row["Qty"] || row["Quantity"] || row["QTY"] || row["Pieces"]
-        );
-        const size = toStr(row["Size"] || row["Dimensions"] || row["Dim"]);
-        const glassType = toStr(
-          row["Type"] || row["Glass Type"] || row["Glass"]
-        );
-        const notes = toStr(row["Notes"] || row["Remarks"] || row["Comment"]);
+        // Line / Code
+        let lineCode =
+          row["Line Code"] ||
+          row["Line"] ||
+          row["Code"] ||
+          row["Item"] ||
+          `L${idx + 1}`;
+
+        // ✅ أول شي من Misc3 (Qty)
+        let qtyRaw =
+          row["Misc3"] ||
+          row["misc3"] ||
+          row["Qty"] ||
+          row["Quantity"] ||
+          row["QTY"] ||
+          row["Pieces"] ||
+          row["pcs"];
+
+        // Size و Type و Notes
+        let size =
+          row["Size"] || row["Dimensions"] || row["Dim"] || row["SIZE"];
+
+        let glassType =
+          row["Type"] ||
+          row["Glass Type"] ||
+          row["Glass"] ||
+          row["Description"];
+
+        let notes =
+          row["Notes"] || row["Remarks"] || row["Comment"] || row["备注"];
+
+        // Misc fields
+        const misc1 = row["Misc1"] || row["misc1"];
+        const misc2 = row["Misc2"] || row["misc2"];
+        const misc3 = row["Misc3"] || row["misc3"];
+        const misc4 = row["Misc4"] || row["misc4"];
+
+        // لو ما في size نبنيه من Misc1 / Misc2 / Misc4
+        if (!size && (misc1 || misc2 || misc4)) {
+          let thickness = null;
+          if (misc4 && String(misc4).includes("*")) {
+            const parts = String(misc4)
+              .split("*")
+              .map((p) => p.trim())
+              .filter(Boolean);
+            if (parts.length >= 3) thickness = parts[2];
+          }
+
+          const lenStr = misc1 ? String(misc1) : "?";
+          const widStr = misc2 ? String(misc2) : "?";
+
+          size = thickness
+            ? `${lenStr} x ${widStr} m (${thickness} mm)`
+            : `${lenStr} x ${widStr} m`;
+
+          if (misc4) {
+            notes = (notes ? notes + " | " : "") + `Misc4: ${misc4}`;
+          }
+        }
+
+        const qty = toInt(qtyRaw, 1); // default 1 لو ناقصة
 
         if (qty <= 0) {
           warnings.push(
-            `Line ${lineCode}: Quantity is zero or invalid (${qty})`
+            `Line ${lineCode}: Quantity is zero or invalid (${qtyRaw})`
           );
         }
 
@@ -100,15 +150,16 @@ function parseFile(buffer, filename) {
         }
 
         lines.push({
-          line_code: lineCode,
+          line_code: toStr(lineCode),
           qty,
-          size,
-          glass_type: glassType,
-          notes,
+          size: toStr(size),
+          glass_type: toStr(glassType),
+          notes: toStr(notes, null),
         });
       });
+
+      // ---------- EXCEL (XLS / XLSX) ----------
     } else if (["xlsx", "xls"].includes(fileExtension)) {
-      // Parse Excel
       const workbook = XLSX.read(buffer, { type: "buffer" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const records = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
@@ -120,31 +171,76 @@ function parseFile(buffer, filename) {
 
       const headers = records[0].map((h) => toStr(h).toLowerCase());
 
+      const getCol = (row, possibleNames) => {
+        for (const name of possibleNames) {
+          const idx = headers.indexOf(name.toLowerCase());
+          if (idx !== -1 && row[idx] !== undefined) return row[idx];
+        }
+        return null;
+      };
+
+      const hasMisc1 = headers.includes("misc1");
+      const hasMisc2 = headers.includes("misc2");
+      const hasMisc3 = headers.includes("misc3");
+      const hasMisc4 = headers.includes("misc4");
+
       for (let i = 1; i < records.length; i++) {
         const row = records[i];
         if (!row || row.every((cell) => !cell)) continue;
 
-        const getCol = (possibleNames) => {
-          for (const name of possibleNames) {
-            const idx = headers.indexOf(name.toLowerCase());
-            if (idx !== -1 && row[idx] !== undefined) return row[idx];
-          }
-          return null;
-        };
+        let lineCode =
+          getCol(row, ["line code", "line", "code", "item", "code1"]) ||
+          `L${i}`;
 
-        const lineCode = toStr(
-          getCol(["line code", "line", "code", "item"]) || `L${i}`
-        );
-        const qty = toInt(getCol(["qty", "quantity", "pieces", "qty."]));
-        const size = toStr(getCol(["size", "dimensions", "dim", "规格"]));
-        const glassType = toStr(
-          getCol(["type", "glass type", "glass", "种类"])
-        );
-        const notes = toStr(getCol(["notes", "remarks", "comment", "备注"]));
+        // ✅ Qty من Misc3 أولاً
+        const misc3 = hasMisc3 ? getCol(row, ["misc3", "Misc3"]) : null;
+        let qtyRaw =
+          misc3 || getCol(row, ["qty", "quantity", "pieces", "qty.", "pcs"]);
+
+        let size = getCol(row, ["size", "dimensions", "dim", "规格"]) || null;
+        let glassType =
+          getCol(row, ["type", "glass type", "glass", "种类"]) || null;
+        let notes =
+          getCol(row, ["notes", "remarks", "comment", "备注"]) || null;
+
+        const misc1 = hasMisc1 ? getCol(row, ["misc1", "Misc1"]) : null;
+        const misc2 = hasMisc2 ? getCol(row, ["misc2", "Misc2"]) : null;
+        const misc4 = hasMisc4 ? getCol(row, ["misc4", "Misc4"]) : null;
+        const description = getCol(row, ["description", "desc"]);
+
+        // لو ما في size نبنيه من misc1/misc2/misc4
+        if (!size && (misc1 || misc2 || misc4)) {
+          let thickness = null;
+          if (misc4 && String(misc4).includes("*")) {
+            const parts = String(misc4)
+              .split("*")
+              .map((p) => p.trim())
+              .filter(Boolean);
+            if (parts.length >= 3) thickness = parts[2];
+          }
+
+          const lenStr = misc1 ? String(misc1) : "?";
+          const widStr = misc2 ? String(misc2) : "?";
+
+          size = thickness
+            ? `${lenStr} x ${widStr} m (${thickness} mm)`
+            : `${lenStr} x ${widStr} m`;
+
+          if (misc4) {
+            notes = (notes ? notes + " | " : "") + `Misc4: ${misc4}`;
+          }
+        }
+
+        // لو ما في glassType نستخدم Description
+        if (!glassType && description) {
+          glassType = description;
+        }
+
+        const qty = toInt(qtyRaw, 1);
 
         if (qty <= 0) {
           warnings.push(
-            `Line ${lineCode}: Quantity is zero or invalid (${qty})`
+            `Line ${lineCode}: Quantity is zero or invalid (${qtyRaw})`
           );
         }
 
@@ -153,11 +249,11 @@ function parseFile(buffer, filename) {
         }
 
         lines.push({
-          line_code: lineCode,
+          line_code: toStr(lineCode),
           qty,
-          size,
-          glass_type: glassType,
-          notes,
+          size: toStr(size),
+          glass_type: toStr(glassType),
+          notes: toStr(notes, null),
         });
       }
     } else {
@@ -657,65 +753,66 @@ router.delete("/:id/lines", async (req, res, next) => {
 // TEMPORARY SIMPLIFIED VERSION FOR TESTING
 
 // GET /api/orders (قائمة جميع الطلبات)
+// GET /api/orders - COMPLETE WORKING VERSION
+// GET /api/orders - ULTRA SIMPLE VERSION FOR TESTING
 router.get("/", authRequired, async (req, res, next) => {
   let conn;
   try {
     conn = await pool.getConnection();
 
-    // Debug: Check if user is authenticated
-    console.log("User making request:", req.user);
+    console.log("=== TESTING ORDERS API ===");
 
-    if (!req.user) {
-      return res.status(401).json({
+    // TEST 1: Check if orders table exists
+    try {
+      const [test] = await conn.execute("SELECT 1 FROM orders LIMIT 1");
+      console.log("✅ Orders table exists");
+    } catch (tableError) {
+      console.error("❌ Orders table error:", tableError.message);
+      return res.status(500).json({
         ok: false,
-        error: "Authentication required",
+        error: "Orders table doesn't exist or has error",
+        details: tableError.message,
       });
     }
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
 
-    // Simple query without filters first
-    const query = `
-      SELECT 
-        o.*,
-        (SELECT COUNT(*) FROM order_lines ol WHERE ol.order_id = o.id) AS line_count,
-        (SELECT COALESCE(SUM(qty), 0) FROM order_lines ol WHERE ol.order_id = o.id) AS total_pieces
-      FROM orders o
-      ORDER BY o.created_at DESC
-      LIMIT ? OFFSET ?
-    `;
-
-    console.log("Simple query:", query, "Params:", [limit, offset]);
-
-    const [rows] = await conn.execute(query, [limit, offset]);
-
-    // Get total count
+    // TEST 2: Count orders
     const [countResult] = await conn.execute(
       "SELECT COUNT(*) as total FROM orders"
     );
     const total = countResult[0]?.total || 0;
+    console.log("Total orders:", total);
 
+    // SIMPLEST POSSIBLE QUERY
+    const query = "SELECT * FROM orders ORDER BY created_at DESC LIMIT 10";
+    console.log("Executing query:", query);
+
+    const [rows] = await conn.execute(query);
+    console.log(`Found ${rows.length} orders`);
+
+    // Return simple response
     res.json({
       ok: true,
       orders: rows,
       pagination: {
-        page: page,
-        limit: limit,
+        page: 1,
+        limit: 10,
         total: total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / 10),
       },
     });
   } catch (error) {
-    console.error("❌ Simple orders list error:", error);
+    console.error("❌ ULTRA SIMPLE ERROR:", error);
+    console.error("Full error:", JSON.stringify(error, null, 2));
+
     res.status(500).json({
       ok: false,
-      error: error.message,
-      details: error.sqlMessage,
+      error: "Database error",
+      message: error.message,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
     });
   } finally {
     if (conn) conn.release();
   }
 });
-
 module.exports = router;

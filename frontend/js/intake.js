@@ -1,52 +1,47 @@
+// js/intake.js
 (() => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
   const els = {
-    userChip: document.getElementById("userChip"),
     plannerStatus: document.getElementById("plannerStatus"),
-
     kpiDraft: document.getElementById("kpiDraft"),
     kpiActive: document.getElementById("kpiActive"),
     kpiPaused: document.getElementById("kpiPaused"),
     kpiPieces: document.getElementById("kpiPieces"),
-
     statusFilter: document.getElementById("statusFilter"),
     searchInput: document.getElementById("searchInput"),
     draftOnlyToggle: document.getElementById("draftOnlyToggle"),
     refreshBtn: document.getElementById("refreshBtn"),
-
     ordersBody: document.getElementById("ordersBody"),
   };
 
-  function authHeaders() {
-    return { Authorization: `Bearer ${token}` };
-  }
+  const state = { orders: [] };
 
-  function esc(s) {
-    return String(s ?? "")
+  const authHeaders = () => ({ Authorization: `Bearer ${token}` });
+
+  const esc = (s) =>
+    String(s ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
-  }
 
-  function formatDate(d) {
+  const formatDate = (d) => {
     if (!d) return "—";
     const dt = new Date(d);
     if (Number.isNaN(dt.getTime())) return "—";
     return dt.toISOString().slice(0, 10);
-  }
+  };
 
-  function formatDateTime(d) {
-    if (!d) return "—";
-    const dt = new Date(d);
-    if (Number.isNaN(dt.getTime())) return "—";
-    return dt.toISOString().slice(0, 16).replace("T", " ");
-  }
+  const setStatus = (msg, type = "info") => {
+    if (!els.plannerStatus) return;
+    els.plannerStatus.textContent = msg;
+    els.plannerStatus.className = `station-status-message ${type}`;
+  };
 
-  function statusPill(status) {
+  const statusPill = (status) => {
     const s = String(status || "").toLowerCase();
     if (s === "draft")
       return `<span class="status-pill status-not-started">Draft</span>`;
@@ -59,18 +54,15 @@
     return `<span class="status-pill status-not-started">${esc(
       status || "—"
     )}</span>`;
-  }
+  };
 
-  function setPlannerStatus(msg, type = "info") {
-    if (!els.plannerStatus) return;
-    const colors = {
-      info: "#6b7280",
-      success: "#16a34a",
-      error: "#dc2626",
+  const debounce = (fn, ms = 250) => {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
     };
-    els.plannerStatus.style.color = colors[type] || colors.info;
-    els.plannerStatus.textContent = msg;
-  }
+  };
 
   async function loadKpis() {
     try {
@@ -87,121 +79,120 @@
       els.kpiPaused.textContent = Number(k.paused || 0);
       els.kpiPieces.textContent = Number(k.piecesToday || 0);
     } catch (e) {
-      console.error(e);
+      console.error("loadKpis failed:", e);
     }
   }
 
   async function loadOrders() {
     try {
-      setPlannerStatus("Loading orders…", "info");
+      setStatus("Loading intake queue…", "info");
+
+      els.ordersBody.innerHTML = `
+        <tr><td colspan="9" style="padding:12px; color:#6b7280;">Loading…</td></tr>
+      `;
 
       const status = els.statusFilter.value || "all";
       const q = (els.searchInput.value || "").trim();
       const draftOnly = els.draftOnlyToggle.checked ? "1" : "0";
 
-      const params = new URLSearchParams({
-        status,
-        q,
-        draftOnly,
-        page: "1",
-        limit: "50",
-      });
+      const params = new URLSearchParams();
+      if (status && status !== "all") params.set("status", status);
+      if (q) params.set("q", q);
+      if (draftOnly === "1") params.set("draftOnly", "1");
 
-      const res = await fetch(`/api/intake/orders?${params.toString()}`, {
+      const url =
+        "/api/intake/orders" + (params.toString() ? `?${params}` : "");
+      const res = await fetch(url, {
         headers: authHeaders(),
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({}));
 
-      els.ordersBody.innerHTML = "";
-
       if (!res.ok || !data.ok) {
         els.ordersBody.innerHTML = `
-          <tr>
-            <td colspan="9" style="color:#dc2626; padding:12px;">
-              Failed to load orders: ${esc(data.error || res.status)}
-            </td>
-          </tr>`;
-        setPlannerStatus("Failed to load orders.", "error");
+          <tr><td colspan="9" style="color:#dc2626; padding:12px;">
+            Failed to load orders: ${esc(data.error || res.status)}
+          </td></tr>
+        `;
+        setStatus("Failed to load orders.", "error");
         return;
       }
 
-      const orders = data.orders || [];
-      if (!orders.length) {
+      state.orders = data.orders || [];
+
+      if (!state.orders.length) {
         els.ordersBody.innerHTML = `
-          <tr>
-            <td colspan="9" style="color:#6b7280; padding:12px;">
-              No orders found for this filter.
-            </td>
-          </tr>`;
-        setPlannerStatus("No orders for current filters.", "info");
+          <tr><td colspan="9" style="color:#6b7280; padding:12px;">No orders match your filters.</td></tr>
+        `;
+        setStatus("No orders in this view.", "info");
         return;
       }
 
-      orders.forEach((o) => {
+      els.ordersBody.innerHTML = "";
+      state.orders.forEach((o) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${esc(o.order_no)}</td>
           <td>${esc(o.client)}</td>
           <td>${esc(o.prf || "—")}</td>
-          <td>${formatDateTime(o.created_at)}</td>
-          <td>${formatDate(o.delivery_date)}</td>
+          <td>${esc(formatDate(o.created_at))}</td>
+          <td>${esc(formatDate(o.delivery_date))}</td>
           <td>${Number(o.total_lines || 0)}</td>
           <td>${Number(o.activated_lines || 0)}</td>
           <td>${statusPill(o.status)}</td>
           <td>
-            <button class="btn btn-primary btn-sm" data-order-id="${
+            <button class="btn btn-primary btn-small" data-plan-order="${
               o.id
-            }">Open</button>
+            }" type="button">
+              Open Intake
+            </button>
           </td>
         `;
         els.ordersBody.appendChild(tr);
       });
 
-      // زر Open → افتح صفحة جديدة
-      els.ordersBody
-        .querySelectorAll("button[data-order-id]")
-        .forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const orderId = Number(btn.getAttribute("data-order-id"));
-            const order = (orders || []).find((x) => x.id === orderId);
-            if (!order) return;
-
-            // نحفظ بيانات الـ order في sessionStorage
-            sessionStorage.setItem("intakeCurrentOrder", JSON.stringify(order));
-
-            // نروح على صفحة التخطيط الكاملة
-            window.location.href = `intake-order.html?orderId=${orderId}`;
-          });
-        });
-
-      setPlannerStatus("Orders loaded ✅", "success");
+      setStatus("Ready – open an order to plan intake.", "success");
     } catch (e) {
-      console.error(e);
+      console.error("loadOrders failed:", e);
       els.ordersBody.innerHTML = `
-        <tr>
-          <td colspan="9" style="color:#dc2626; padding:12px;">
-            Exception while loading orders: ${esc(e.message || e)}
-          </td>
-        </tr>`;
-      setPlannerStatus("Exception while loading orders.", "error");
+        <tr><td colspan="9" style="color:#dc2626; padding:12px;">
+          Exception while loading orders: ${esc(e.message || e)}
+        </td></tr>
+      `;
+      setStatus("Exception while loading orders.", "error");
     }
   }
 
-  function init() {
-    if (els.userChip && user) {
-      els.userChip.textContent = `User: ${user.username || "—"}`;
-    }
+  function handleOrderClick(e) {
+    const btn = e.target.closest("[data-plan-order]");
+    if (!btn) return;
 
-    els.statusFilter?.addEventListener("change", loadOrders);
-    els.draftOnlyToggle?.addEventListener("change", loadOrders);
-    els.searchInput?.addEventListener("keyup", (e) => {
-      if (e.key === "Enter") loadOrders();
-    });
-    els.refreshBtn?.addEventListener("click", loadOrders);
+    const orderId = Number(btn.dataset.planOrder || 0);
+    const order = (state.orders || []).find((x) => Number(x.id) === orderId);
+    if (!order) return;
+
+    sessionStorage.setItem("intakeCurrentOrder", JSON.stringify(order));
+    window.location.href = `plan-intake.html?orderId=${orderId}`;
+  }
+
+  function init() {
+    if (!user || !token) {
+      window.location.replace("./index.html?logout=1");
+      return;
+    }
 
     loadKpis();
     loadOrders();
+
+    els.statusFilter?.addEventListener("change", loadOrders);
+    els.draftOnlyToggle?.addEventListener("change", loadOrders);
+    els.refreshBtn?.addEventListener("click", loadOrders);
+    els.ordersBody?.addEventListener("click", handleOrderClick);
+
+    const debounced = debounce(loadOrders, 250);
+    els.searchInput?.addEventListener("input", debounced);
+
+    setStatus("Waiting for action…", "info");
   }
 
   init();

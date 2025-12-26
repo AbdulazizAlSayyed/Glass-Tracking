@@ -39,11 +39,14 @@ function initApp() {
   }
 
   const els = {
+    // User info and stats
     userChip: document.getElementById("userChip"),
     statImported: document.getElementById("statImported"),
     statDraft: document.getElementById("statDraft"),
     statLastImport: document.getElementById("statLastImport"),
     statWarnings: document.getElementById("statWarnings"),
+
+    // Import form elements
     file: document.getElementById("noriaFile"),
     fileMeta: document.getElementById("fileMeta"),
     prf: document.getElementById("prfInput"),
@@ -53,6 +56,8 @@ function initApp() {
     previewBtn: document.getElementById("previewBtn"),
     resetBtn: document.getElementById("resetBtn"),
     importStatus: document.getElementById("importStatus"),
+
+    // Preview section
     previewCard: document.getElementById("previewCard"),
     pvOrderNo: document.getElementById("pvOrderNo"),
     pvClient: document.getElementById("pvClient"),
@@ -62,7 +67,47 @@ function initApp() {
     previewBody: document.getElementById("previewBody"),
     createDraftBtn: document.getElementById("createDraftBtn"),
     closePreviewBtn: document.getElementById("closePreviewBtn"),
-    recentBody: document.getElementById("recentOrdersBody"), // FIXED: was "amaniOrdersBody"
+
+    // Recent orders table (if exists in your HTML)
+    recentBody: document.getElementById("recentOrdersBody"),
+
+    // All Orders Management - Main table with filters
+    refreshOrdersBtn: document.getElementById("refreshOrdersBtn"),
+    viewAllOrdersBtn: document.getElementById("viewAllOrdersBtn"),
+    statusFilter: document.getElementById("statusFilter"),
+    clientSearch: document.getElementById("clientSearch"),
+    orderNoSearch: document.getElementById("orderNoSearch"),
+    dateFilter: document.getElementById("dateFilter"),
+
+    // All Orders Table elements (from your new HTML section)
+    allOrdersBody: document.getElementById("allOrdersBody"),
+    allOrdersPrevBtn: document.getElementById("allOrdersPrevBtn"),
+    allOrdersNextBtn: document.getElementById("allOrdersNextBtn"),
+    allOrdersCurrentPage: document.getElementById("allOrdersCurrentPage"),
+    allOrdersTotalPages: document.getElementById("allOrdersTotalPages"),
+    allOrdersFrom: document.getElementById("allOrdersFrom"),
+    allOrdersTo: document.getElementById("allOrdersTo"),
+    allOrdersTotal: document.getElementById("allOrdersTotal"),
+    allOrdersPageSize: document.getElementById("allOrdersPageSize"),
+
+    // Modal elements
+    orderDetailsModal: document.getElementById("orderDetailsModal"),
+    modalOrderNo: document.getElementById("modalOrderNo"),
+    orderDetailsContent: document.getElementById("orderDetailsContent"),
+
+    // Other elements
+    logoutBtn: document.getElementById("logoutBtn"),
+
+    // Old pagination elements (from the "All Orders Management" section)
+    // These might be for a different table, so you need to decide which to use
+    prevPageBtn: document.getElementById("prevPageBtn"),
+    nextPageBtn: document.getElementById("nextPageBtn"),
+    currentPage: document.getElementById("currentPage"),
+    totalPages: document.getElementById("totalPages"),
+    ordersFrom: document.getElementById("ordersFrom"),
+    ordersTo: document.getElementById("ordersTo"),
+    ordersTotal: document.getElementById("ordersTotal"),
+    pageSize: document.getElementById("pageSize"),
   };
 
   // ✅ ADD MISSING ELEMENTS HERE - BEFORE loadRecent is called
@@ -591,9 +636,13 @@ function initApp() {
   }
 
   function renderAllOrders(orders) {
-    if (!els.allOrdersBody) return;
+    if (!els.allOrdersBody) {
+      // ← Change from els.allOrdersBody to whichever table you want
+      console.warn("allOrdersBody element not found");
+      return;
+    }
 
-    els.allOrdersBody.innerHTML = "";
+    els.allOrdersBody.innerHTML = ""; // ← Change this too
 
     if (!orders || orders.length === 0) {
       els.allOrdersBody.innerHTML = `
@@ -656,27 +705,58 @@ function initApp() {
     });
   }
 
+  // Update pagination UI for ALL ORDERS table
+
+  // Update pagination UI to use the correct elements
   function updatePaginationUI() {
-    if (!els.currentPage || !els.totalPages) return;
+    // Decide which set of elements to use:
+    // For "All Orders (Detailed View)" - use allOrders* elements
+    // For "All Orders Management" - use the other elements
 
-    els.currentPage.textContent = currentAllOrdersPage;
-    els.totalPages.textContent = totalAllPages;
+    if (els.allOrdersCurrentPage && els.allOrdersTotalPages) {
+      // Use the new "All Orders (Detailed View)" elements
+      els.allOrdersCurrentPage.textContent = currentAllOrdersPage;
+      els.allOrdersTotalPages.textContent = totalAllPages;
 
-    const from = (currentAllOrdersPage - 1) * allOrdersPageSize + 1;
-    const to = Math.min(
-      currentAllOrdersPage * allOrdersPageSize,
-      totalAllOrders
-    );
+      const from = (currentAllOrdersPage - 1) * allOrdersPageSize + 1;
+      const to = Math.min(
+        currentAllOrdersPage * allOrdersPageSize,
+        totalAllOrders
+      );
 
-    if (els.ordersFrom)
-      els.ordersFrom.textContent = totalAllOrders > 0 ? from : 0;
-    if (els.ordersTo) els.ordersTo.textContent = totalAllOrders > 0 ? to : 0;
-    if (els.ordersTotal) els.ordersTotal.textContent = totalAllOrders;
+      if (els.allOrdersFrom)
+        els.allOrdersFrom.textContent = totalAllOrders > 0 ? from : 0;
+      if (els.allOrdersTo)
+        els.allOrdersTo.textContent = totalAllOrders > 0 ? to : 0;
+      if (els.allOrdersTotal) els.allOrdersTotal.textContent = totalAllOrders;
 
-    if (els.prevPageBtn) els.prevPageBtn.disabled = currentAllOrdersPage <= 1;
-    if (els.nextPageBtn)
-      els.nextPageBtn.disabled = currentAllOrdersPage >= totalAllPages;
-    if (els.pageSize) els.pageSize.value = allOrdersPageSize;
+      if (els.allOrdersPrevBtn)
+        els.allOrdersPrevBtn.disabled = currentAllOrdersPage <= 1;
+      if (els.allOrdersNextBtn)
+        els.allOrdersNextBtn.disabled = currentAllOrdersPage >= totalAllPages;
+      if (els.allOrdersPageSize)
+        els.allOrdersPageSize.value = allOrdersPageSize;
+    } else {
+      // Fallback to old elements if new ones don't exist
+      if (els.currentPage) els.currentPage.textContent = currentAllOrdersPage;
+      if (els.totalPages) els.totalPages.textContent = totalAllPages;
+
+      const from = (currentAllOrdersPage - 1) * allOrdersPageSize + 1;
+      const to = Math.min(
+        currentAllOrdersPage * allOrdersPageSize,
+        totalAllOrders
+      );
+
+      if (els.ordersFrom)
+        els.ordersFrom.textContent = totalAllOrders > 0 ? from : 0;
+      if (els.ordersTo) els.ordersTo.textContent = totalAllOrders > 0 ? to : 0;
+      if (els.ordersTotal) els.ordersTotal.textContent = totalAllOrders;
+
+      if (els.prevPageBtn) els.prevPageBtn.disabled = currentAllOrdersPage <= 1;
+      if (els.nextPageBtn)
+        els.nextPageBtn.disabled = currentAllOrdersPage >= totalAllPages;
+      if (els.pageSize) els.pageSize.value = allOrdersPageSize;
+    }
   }
 
   // Make functions available globally for onclick handlers
@@ -971,6 +1051,8 @@ function initApp() {
   }
 
   // Event Listeners
+  // Event Listeners for file upload and preview
+
   if (els.file) {
     els.file.addEventListener("change", () => {
       const file = getFile();
@@ -1015,6 +1097,8 @@ function initApp() {
   if (els.orderNo) {
     setTimeout(() => els.orderNo.focus(), 100);
   }
+
+  // ============ ADD ALL ORDERS EVENT LISTENERS HERE ============
 
   // Add event listeners for order management
   if (els.refreshOrdersBtn) {
@@ -1061,6 +1145,34 @@ function initApp() {
     });
   }
 
+  // ============ PAGINATION EVENT LISTENERS ============
+  // Use the correct buttons for the "All Orders (Detailed View)" table
+
+  if (els.allOrdersPrevBtn) {
+    els.allOrdersPrevBtn.addEventListener("click", () => {
+      if (currentAllOrdersPage > 1) {
+        loadAllOrders(currentAllOrdersPage - 1, allOrdersPageSize);
+      }
+    });
+  }
+
+  if (els.allOrdersNextBtn) {
+    els.allOrdersNextBtn.addEventListener("click", () => {
+      if (currentAllOrdersPage < totalAllPages) {
+        loadAllOrders(currentAllOrdersPage + 1, allOrdersPageSize);
+      }
+    });
+  }
+
+  if (els.allOrdersPageSize) {
+    els.allOrdersPageSize.addEventListener("change", () => {
+      const newSize = parseInt(els.allOrdersPageSize.value);
+      loadAllOrders(1, newSize);
+    });
+  }
+
+  // ============ ALSO KEEP THE OLD ONES FOR COMPATIBILITY ============
+  // (In case you still have the old pagination elements)
   if (els.prevPageBtn) {
     els.prevPageBtn.addEventListener("click", () => {
       if (currentAllOrdersPage > 1) {
@@ -1084,7 +1196,7 @@ function initApp() {
     });
   }
 
-  // Add logout functionality
+  // ============ LOGOUT FUNCTIONALITY ============
   if (els.logoutBtn) {
     els.logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -1096,10 +1208,10 @@ function initApp() {
     });
   }
 
-  // Load initial data
+  // ============ LOAD INITIAL DATA ============
   loadSummary();
   loadRecent();
   loadAllOrders(1, 10);
 
   console.log("Import Orders page initialized successfully");
-}
+} // ← This is the end of initApp() function

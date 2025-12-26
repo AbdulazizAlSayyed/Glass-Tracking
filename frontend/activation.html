@@ -6,37 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Intake / Planning (Ziad)</title>
     <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Auth FIRST -->
+    <script src="js/auth.js" defer></script>
+    <!-- Page logic -->
+    <script src="js/intake.js" defer></script>
 </head>
 
-<script>
-    (() => {
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-        const authToken = localStorage.getItem("token");
-        const params = new URLSearchParams(window.location.search);
-
-        if (params.get("logout") === "1") {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            window.location.replace("/index.html?logout=1");
-            return;
-        }
-
-        if (!user || !authToken) {
-            window.location.replace("/index.html?logout=1");
-            return;
-        }
-
-        const current = location.pathname.split("/").pop() || "index.html";
-        if (user.homePage && user.homePage !== current) {
-            window.location.replace("/" + user.homePage);
-        }
-    })();
-</script>
-
 <body>
-    <!-- لاحظ زدنا app-shell--no-sidebar وشلنا الـ <aside> -->
     <div class="app-shell app-shell--no-sidebar">
-        <!-- Main -->
         <main class="main">
             <header class="main-header">
                 <div>
@@ -55,11 +33,8 @@
                 </div>
             </header>
 
-            <div class="station-status-message info" id="plannerStatus">
-                Waiting for action…
-            </div>
+            <div class="station-status-message info" id="plannerStatus">Waiting for action…</div>
 
-            <!-- KPIs -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -92,7 +67,6 @@
                 </div>
             </section>
 
-            <!-- Filters -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -118,11 +92,10 @@
                         Show only Draft waiting intake
                     </label>
 
-                    <button class="btn btn-ghost" id="refreshBtn">Refresh</button>
+                    <button class="btn btn-ghost" id="refreshBtn" type="button">Refresh</button>
                 </div>
             </section>
 
-            <!-- Orders table -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -146,18 +119,12 @@
                                 <th style="min-width:220px;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="ordersBody">
-                            <!-- injected by JS -->
-                        </tbody>
+                        <tbody id="ordersBody"></tbody>
                     </table>
                 </div>
             </section>
         </main>
     </div>
-
-    <script src="js/intake.js"></script>
-    <script src="js/auth.js"></script>
-
 </body>
 
 </html>

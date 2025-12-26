@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Plan Intake</title>
     <link rel="stylesheet" href="css/style.css" />
+
     <style>
         .io-header-grid {
             display: grid;
@@ -30,22 +31,13 @@
             font-weight: 600;
         }
     </style>
+
+    <script src="js/auth.js" defer></script>
+    <script src="js/intake-order.js" defer></script>
 </head>
 
-<script>
-    (() => {
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-        const authToken = localStorage.getItem("token");
-        if (!user || !authToken) {
-            window.location.replace("/index.html?logout=1");
-        }
-    })();
-</script>
-
 <body>
-    <!-- كمان هون زدنا app-shell--no-sidebar وشلنا الـ <aside> -->
     <div class="app-shell app-shell--no-sidebar">
-        <!-- Main -->
         <main class="main">
             <header class="main-header">
                 <div>
@@ -57,7 +49,7 @@
                     </div>
                 </div>
                 <div class="main-header-right">
-                    <button class="btn btn-ghost" onclick="window.location.href='activation.html'">
+                    <button class="btn btn-ghost" type="button" onclick="window.location.href='activation.html'">
                         ← Back to Intake list
                     </button>
                     <a href="#" class="nav-item nav-item-logout" id="logoutBtn">
@@ -67,11 +59,8 @@
                 </div>
             </header>
 
-            <div class="station-status-message info" id="ioStatus">
-                Loading…
-            </div>
+            <div class="station-status-message info" id="ioStatus">Loading…</div>
 
-            <!-- Order summary -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -100,7 +89,6 @@
                 </div>
             </section>
 
-            <!-- Controls + table -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -109,20 +97,16 @@
                     </div>
                 </div>
 
-                <!-- Bulk controls -->
                 <div
                     style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px; font-size:0.8rem;">
-                    <button class="btn btn-ghost" id="ioBulkAllBtn">
-                        Activate all remaining (full order)
-                    </button>
+                    <button class="btn btn-ghost" id="ioBulkAllBtn" type="button">Activate all remaining (full
+                        order)</button>
 
                     <select class="input" id="ioBulkThicknessSelect" style="max-width:220px;">
                         <option value="">Activate by thickness…</option>
                     </select>
 
-                    <button class="btn btn-ghost" id="ioBulkThicknessBtn">
-                        Apply thickness group
-                    </button>
+                    <button class="btn btn-ghost" id="ioBulkThicknessBtn" type="button">Apply thickness group</button>
 
                     <span style="margin-left:auto; color:#6b7280;">
                         <span id="ioTotals">Selected lines: 0 | Pieces to activate now: 0</span>
@@ -139,31 +123,21 @@
                                 <th>Total Qty</th>
                                 <th>Already activated</th>
                                 <th>Activate now</th>
-                                <th>Priority</th>
                                 <th>Go?</th>
                             </tr>
                         </thead>
-                        <tbody id="ioLinesBody">
-                            <!-- injected -->
-                        </tbody>
+                        <tbody id="ioLinesBody"></tbody>
                     </table>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-                    <button class="btn btn-ghost" onclick="window.location.href='activation.html'">
-                        Cancel
-                    </button>
-                    <button class="btn btn-primary" id="ioActivateBtn">
-                        Send to Factory
-                    </button>
+                    <button class="btn btn-ghost" type="button"
+                        onclick="window.location.href='activation.html'">Cancel</button>
+                    <button class="btn btn-primary" id="ioActivateBtn" type="button">Send to Factory</button>
                 </div>
             </section>
         </main>
     </div>
-
-    <script src="js/intake-order.js"></script>
-    <script src="js/auth.js"></script>
-
 </body>
 
 </html>

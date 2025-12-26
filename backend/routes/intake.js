@@ -131,9 +131,12 @@ router.get("/orders/:orderId/lines", async (req, res, next) => {
 });
 
 // Activate lines = create pieces
+// Activate lines = create pieces
 router.post("/activate", async (req, res, next) => {
-  const conn = await pool.getConnection();
+  let conn;
   try {
+    conn = await pool.getConnection();
+
     const orderId = clampInt(req.body?.orderId, 1, 999999999, null);
     const lines = Array.isArray(req.body?.lines) ? req.body.lines : [];
 
@@ -155,6 +158,12 @@ router.post("/activate", async (req, res, next) => {
       `SELECT id FROM stations WHERE stage_order = 1 ORDER BY id ASC LIMIT 1`
     );
     const firstStationId = stRows[0]?.id || null;
+
+    if (!firstStationId) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "No first station found (stage_order=1)" });
+    }
 
     await conn.beginTransaction();
 
@@ -190,47 +199,63 @@ router.post("/activate", async (req, res, next) => {
 
       for (let i = 1; i <= toCreate; i++) {
         const seq = already + i;
-        const pieceCode = `${orderNo}-${lineCode}-${seq}`;
+        const pieceNumber = `${orderNo}-${lineCode}-${seq}`;
+
         await conn.execute(
           `
-          INSERT INTO glass_pieces (
-            piece_code,
-            order_id,
-            line_id,
-            current_station_id,
-            status
-          )
-          VALUES (?, ?, ?, ?, 'Waiting')
-          `,
-          [pieceCode, orderId, lineId, firstStationId]
+  INSERT INTO glass_pieces (
+    order_id,
+    line_id,
+    current_station_id,
+    piece_number,
+    status,
+    created_at,
+    updated_at
+  ) VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+  `,
+          [orderId, lineId, firstStationId, pieceNumber]
         );
+
         createdPieces++;
       }
 
       touchedLines++;
     }
 
-    if (createdPieces > 0) {
-      await conn.execute(
-        `UPDATE orders SET status = 'Active' WHERE id = ? AND status = 'Draft'`,
-        [orderId]
-      );
-    }
+    // ✅ Recalculate order status based on activated lines
+    const [[tl]] = await conn.execute(
+      `SELECT COUNT(*) AS totalLines FROM order_lines WHERE order_id = ?`,
+      [orderId]
+    );
+
+    const [[al]] = await conn.execute(
+      `SELECT COUNT(DISTINCT line_id) AS activatedLines
+   FROM glass_pieces
+   WHERE order_id = ?`,
+      [orderId]
+    );
+
+    const totalLines = Number(tl?.totalLines || 0);
+    const activatedLines = Number(al?.activatedLines || 0);
+
+    const allLinesActivated = totalLines > 0 && activatedLines === totalLines;
+
+    // بدنا نتحكم بس بين Draft و Active (ما نمس Paused/Completed)
+    await conn.execute(
+      `UPDATE orders
+   SET status = ?
+   WHERE id = ? AND status IN ('Draft','Active')`,
+      [allLinesActivated ? "Active" : "Draft", orderId]
+    );
 
     await conn.commit();
 
-    res.json({
-      ok: true,
-      orderId,
-      createdPieces,
-      touchedLines,
-      statusUpdated: createdPieces > 0,
-    });
+    res.json({ ok: true, orderId, createdPieces, touchedLines });
   } catch (e) {
-    await conn.rollback();
+    if (conn) await conn.rollback().catch(() => {});
     next(e);
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 });
 
