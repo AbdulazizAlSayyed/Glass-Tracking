@@ -10,18 +10,19 @@ function likeQ(q) {
   return `%${String(q || "").trim()}%`;
 }
 
+// ======================
 // KPIs
+// ======================
 router.get("/kpis", async (req, res, next) => {
   try {
-    const [rows] = await pool.execute(
-      `
+    const [rows] = await pool.execute(`
       SELECT
         SUM(o.status = 'Draft')  AS draft_count,
         SUM(o.status = 'Active') AS active_count,
         SUM(o.status = 'Paused') AS paused_count
       FROM orders o
-      `
-    );
+    `);
+
     const r = rows[0] || {};
     res.json({
       ok: true,
@@ -29,7 +30,7 @@ router.get("/kpis", async (req, res, next) => {
         draft: Number(r.draft_count || 0),
         active: Number(r.active_count || 0),
         paused: Number(r.paused_count || 0),
-        piecesToday: 0, // ممكن لاحقاً نربطها بـ glass_pieces
+        piecesToday: 0,
       },
     });
   } catch (e) {
@@ -37,7 +38,10 @@ router.get("/kpis", async (req, res, next) => {
   }
 });
 
+// ======================
 // Orders list for intake
+// activated_lines = FULLY completed lines only
+// ======================
 router.get("/orders", async (req, res, next) => {
   try {
     const status = String(req.query.status || "all").toLowerCase();
@@ -83,10 +87,21 @@ router.get("/orders", async (req, res, next) => {
         o.created_at,
         o.delivery_date,
         o.status,
+
         (SELECT COUNT(*) FROM order_lines ol WHERE ol.order_id = o.id) AS total_lines,
-        (SELECT COUNT(DISTINCT gp.line_id)
-           FROM glass_pieces gp
-           WHERE gp.order_id = o.id) AS activated_lines
+
+        (
+          SELECT COUNT(*)
+          FROM (
+            SELECT ol.id
+            FROM order_lines ol
+            LEFT JOIN glass_pieces gp ON gp.line_id = ol.id
+            WHERE ol.order_id = o.id
+            GROUP BY ol.id, ol.qty
+            HAVING COUNT(gp.id) >= ol.qty
+          ) t
+        ) AS activated_lines
+
       FROM orders o
       ${whereSql}
       ORDER BY o.created_at DESC
@@ -100,7 +115,10 @@ router.get("/orders", async (req, res, next) => {
   }
 });
 
+// ======================
 // Order lines for intake
+// activated_qty = how many pieces created for this line
+// ======================
 router.get("/orders/:orderId/lines", async (req, res, next) => {
   try {
     const orderId = clampInt(req.params.orderId, 1, 999999999, null);
@@ -130,8 +148,10 @@ router.get("/orders/:orderId/lines", async (req, res, next) => {
   }
 });
 
+// ======================
 // Activate lines = create pieces
-// Activate lines = create pieces
+// AND set order Active فقط لما كل lines تكتمل بالكامل
+// ======================
 router.post("/activate", async (req, res, next) => {
   let conn;
   try {
@@ -154,6 +174,7 @@ router.post("/activate", async (req, res, next) => {
 
     const orderNo = ordRows[0].order_no;
 
+    // First station (CUTTING)
     const [stRows] = await conn.execute(
       `SELECT id FROM stations WHERE stage_order = 1 ORDER BY id ASC LIMIT 1`
     );
@@ -187,11 +208,11 @@ router.post("/activate", async (req, res, next) => {
       const lineCode = lineRows[0].line_code || `L${lineId}`;
       const totalQty = Number(lineRows[0].qty || 0);
 
-      const [cntRows] = await conn.execute(
+      const [[cntRow]] = await conn.execute(
         `SELECT COUNT(*) AS c FROM glass_pieces WHERE line_id = ?`,
         [lineId]
       );
-      const already = Number(cntRows[0]?.c || 0);
+      const already = Number(cntRow?.c || 0);
 
       const remaining = Math.max(0, totalQty - already);
       const toCreate = Math.min(activateQty, remaining);
@@ -203,16 +224,16 @@ router.post("/activate", async (req, res, next) => {
 
         await conn.execute(
           `
-  INSERT INTO glass_pieces (
-    order_id,
-    line_id,
-    current_station_id,
-    piece_number,
-    status,
-    created_at,
-    updated_at
-  ) VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
-  `,
+          INSERT INTO glass_pieces (
+            order_id,
+            line_id,
+            current_station_id,
+            piece_number,
+            status,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+          `,
           [orderId, lineId, firstStationId, pieceNumber]
         );
 
@@ -222,35 +243,50 @@ router.post("/activate", async (req, res, next) => {
       touchedLines++;
     }
 
-    // ✅ Recalculate order status based on activated lines
-    const [[tl]] = await conn.execute(
-      `SELECT COUNT(*) AS totalLines FROM order_lines WHERE order_id = ?`,
-      [orderId]
+    // ✅ Recalculate: FULL lines only
+    const [[stats]] = await conn.execute(
+      `
+      SELECT
+        (SELECT COUNT(*) FROM order_lines WHERE order_id = ?) AS totalLines,
+        (
+          SELECT COUNT(*)
+          FROM (
+            SELECT ol.id
+            FROM order_lines ol
+            LEFT JOIN glass_pieces gp ON gp.line_id = ol.id
+            WHERE ol.order_id = ?
+            GROUP BY ol.id, ol.qty
+            HAVING COUNT(gp.id) >= ol.qty
+          ) t
+        ) AS fullLines
+      `,
+      [orderId, orderId]
     );
 
-    const [[al]] = await conn.execute(
-      `SELECT COUNT(DISTINCT line_id) AS activatedLines
-   FROM glass_pieces
-   WHERE order_id = ?`,
-      [orderId]
-    );
+    const totalLines = Number(stats?.totalLines || 0);
+    const fullLines = Number(stats?.fullLines || 0);
 
-    const totalLines = Number(tl?.totalLines || 0);
-    const activatedLines = Number(al?.activatedLines || 0);
+    const allFullyActivated = totalLines > 0 && fullLines === totalLines;
 
-    const allLinesActivated = totalLines > 0 && activatedLines === totalLines;
-
-    // بدنا نتحكم بس بين Draft و Active (ما نمس Paused/Completed)
+    // only flip Draft/Active
     await conn.execute(
       `UPDATE orders
-   SET status = ?
-   WHERE id = ? AND status IN ('Draft','Active')`,
-      [allLinesActivated ? "Active" : "Draft", orderId]
+       SET status = ?
+       WHERE id = ? AND status IN ('Draft','Active')`,
+      [allFullyActivated ? "Active" : "Draft", orderId]
     );
 
     await conn.commit();
 
-    res.json({ ok: true, orderId, createdPieces, touchedLines });
+    res.json({
+      ok: true,
+      orderId,
+      createdPieces,
+      touchedLines,
+      totalLines,
+      fullLines,
+      orderStatus: allFullyActivated ? "Active" : "Draft",
+    });
   } catch (e) {
     if (conn) await conn.rollback().catch(() => {});
     next(e);

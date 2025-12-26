@@ -1,6 +1,13 @@
-// js/intake-order.js
+// frontend/js/intake-order.js
 (() => {
   const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token || !user) {
+    window.location.replace("/index.html?logout=1");
+    return;
+  }
+
   const authHeaders = () => ({
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -53,21 +60,21 @@
     orderId: 0,
     order: null,
     lines: [],
-    // selections: lineId -> { go, activateQty }
-    selections: new Map(),
+    selections: new Map(), // lineId -> { go, activateQty }
   };
 
   function renderOrderSummary() {
     const o = state.order || {};
     const orderNo = o.order_no || o.orderNo || "—";
 
-    els.ioOrderNo.textContent = orderNo;
-    els.ioSummaryOrder.textContent = orderNo;
-    els.ioSummaryClient.textContent = o.client || "—";
-    els.ioSummaryPrf.textContent = o.prf || "—";
-    els.ioSummaryDelivery.textContent = formatDate(
-      o.delivery_date || o.deliveryDate
-    );
+    if (els.ioOrderNo) els.ioOrderNo.textContent = `Order: ${orderNo}`;
+    if (els.ioSummaryOrder) els.ioSummaryOrder.textContent = orderNo;
+    if (els.ioSummaryClient) els.ioSummaryClient.textContent = o.client || "—";
+    if (els.ioSummaryPrf) els.ioSummaryPrf.textContent = o.prf || "—";
+    if (els.ioSummaryDelivery)
+      els.ioSummaryDelivery.textContent = formatDate(
+        o.delivery_date || o.deliveryDate
+      );
   }
 
   function computeRemaining(line) {
@@ -88,7 +95,9 @@
       }
     });
 
-    els.ioTotals.textContent = `Selected lines: ${selectedLines} | Pieces to activate now: ${pieces}`;
+    if (els.ioTotals) {
+      els.ioTotals.textContent = `Selected lines: ${selectedLines} | Pieces to activate now: ${pieces}`;
+    }
   }
 
   function renderThicknessOptions() {
@@ -99,23 +108,24 @@
     });
 
     const list = Array.from(set).sort();
-    // reset
-    els.ioBulkThicknessSelect.innerHTML = `<option value="">Activate by thickness…</option>`;
-    list.forEach((t) => {
-      const opt = document.createElement("option");
-      opt.value = t;
-      opt.textContent = t;
-      els.ioBulkThicknessSelect.appendChild(opt);
-    });
+    if (els.ioBulkThicknessSelect) {
+      els.ioBulkThicknessSelect.innerHTML = `<option value="">Activate by thickness…</option>`;
+      list.forEach((t) => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        els.ioBulkThicknessSelect.appendChild(opt);
+      });
+    }
   }
 
   function renderLines() {
+    if (!els.ioLinesBody) return;
     els.ioLinesBody.innerHTML = "";
 
     state.lines.forEach((l) => {
       const remaining = computeRemaining(l);
 
-      // init selection default
       if (!state.selections.has(l.id)) {
         state.selections.set(l.id, { go: false, activateQty: 0 });
       }
@@ -141,7 +151,6 @@
           <input type="checkbox" data-go="${l.id}" />
         </td>
       `;
-
       els.ioLinesBody.appendChild(tr);
     });
 
@@ -149,11 +158,14 @@
   }
 
   function bindTableHandlers() {
+    if (!els.ioLinesBody) return;
+
     els.ioLinesBody.addEventListener("input", (e) => {
       const inp = e.target.closest("[data-qty]");
       if (!inp) return;
+
       const lineId = Number(inp.getAttribute("data-qty"));
-      const line = state.lines.find((x) => x.id === lineId);
+      const line = state.lines.find((x) => Number(x.id) === lineId);
       if (!line) return;
 
       const remaining = computeRemaining(line);
@@ -172,8 +184,8 @@
     els.ioLinesBody.addEventListener("change", (e) => {
       const cb = e.target.closest("[data-go]");
       if (!cb) return;
-      const lineId = Number(cb.getAttribute("data-go"));
 
+      const lineId = Number(cb.getAttribute("data-go"));
       const sel = state.selections.get(lineId) || { go: false, activateQty: 0 };
       sel.go = cb.checked;
       state.selections.set(lineId, sel);
@@ -187,8 +199,8 @@
       const remaining = computeRemaining(l);
       state.selections.set(l.id, { go: remaining > 0, activateQty: remaining });
 
-      const qtyInp = els.ioLinesBody.querySelector(`[data-qty="${l.id}"]`);
-      const goCb = els.ioLinesBody.querySelector(`[data-go="${l.id}"]`);
+      const qtyInp = els.ioLinesBody?.querySelector(`[data-qty="${l.id}"]`);
+      const goCb = els.ioLinesBody?.querySelector(`[data-go="${l.id}"]`);
       if (qtyInp) qtyInp.value = String(remaining);
       if (goCb) goCb.checked = remaining > 0;
     });
@@ -197,7 +209,7 @@
   }
 
   function bulkActivateByThickness() {
-    const t = String(els.ioBulkThicknessSelect.value || "").trim();
+    const t = String(els.ioBulkThicknessSelect?.value || "").trim();
     if (!t) return;
 
     state.lines.forEach((l) => {
@@ -207,8 +219,8 @@
 
       state.selections.set(l.id, { go, activateQty: go ? remaining : 0 });
 
-      const qtyInp = els.ioLinesBody.querySelector(`[data-qty="${l.id}"]`);
-      const goCb = els.ioLinesBody.querySelector(`[data-go="${l.id}"]`);
+      const qtyInp = els.ioLinesBody?.querySelector(`[data-qty="${l.id}"]`);
+      const goCb = els.ioLinesBody?.querySelector(`[data-go="${l.id}"]`);
       if (qtyInp) qtyInp.value = String(go ? remaining : 0);
       if (goCb) goCb.checked = go;
     });
@@ -217,28 +229,41 @@
   }
 
   async function loadLines() {
-    setStatus("Loading lines…", "info");
+    try {
+      setStatus("Loading lines…", "info");
 
-    const res = await fetch(`/api/intake/orders/${state.orderId}/lines`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
+      const res = await fetch(`/api/intake/orders/${state.orderId}/lines`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
 
-    if (!res.ok || !data.ok) {
-      setStatus(`Failed to load lines: ${data.error || res.status}`, "error");
-      els.ioLinesBody.innerHTML = `<tr><td colspan="7" style="color:#dc2626; padding:12px;">Failed to load lines.</td></tr>`;
-      return;
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.replace("/index.html?logout=1");
+        return;
+      }
+
+      if (!res.ok || !data.ok) {
+        setStatus(`Failed to load lines: ${data.error || res.status}`, "error");
+        if (els.ioLinesBody) {
+          els.ioLinesBody.innerHTML = `<tr><td colspan="7" style="color:#dc2626; padding:12px;">Failed to load lines.</td></tr>`;
+        }
+        return;
+      }
+
+      state.lines = data.lines || [];
+      renderThicknessOptions();
+      renderLines();
+      setStatus("Select lines + qty then click Send to Factory.", "success");
+    } catch (e) {
+      console.error(e);
+      setStatus("Exception while loading lines.", "error");
     }
-
-    state.lines = data.lines || [];
-    renderThicknessOptions();
-    renderLines();
-    setStatus("Select lines + qty then click Send to Factory.", "success");
   }
 
   async function activate() {
-    // Build payload
     const lines = [];
     state.lines.forEach((l) => {
       const sel = state.selections.get(l.id);
@@ -258,17 +283,29 @@
       headers: authHeaders(),
       body: JSON.stringify({ orderId: state.orderId, lines }),
     });
+
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("/index.html?logout=1");
+      return;
+    }
 
     if (!res.ok || !data.ok) {
       setStatus(`Activate failed: ${data.error || res.status}`, "error");
       return;
     }
 
-    setStatus(`Done ✅ Created pieces: ${data.createdPieces}`, "success");
+    setStatus(
+      `Done ✅ Created pieces: ${Number(data.createdPieces || 0)}`,
+      "success"
+    );
+
+    // ✅ رجّعك على intake بعد 700ms
     setTimeout(() => {
       window.location.href = "activation.html";
-    }, 600);
+    }, 700);
   }
 
   function init() {
@@ -278,11 +315,10 @@
       return;
     }
 
-    // order meta from sessionStorage (saved from activation page)
     const meta = JSON.parse(
       sessionStorage.getItem("intakeCurrentOrder") || "null"
     );
-    state.order = meta || {};
+    state.order = meta || { order_no: `#${state.orderId}` };
     renderOrderSummary();
 
     bindTableHandlers();

@@ -85,6 +85,10 @@ function showStatus(type, msg) {
 }
 
 const todayBadge = document.getElementById("todayPassedBadge");
+function setTodayPassed(n) {
+  if (!todayBadge) return;
+  todayBadge.textContent = `Today: ${Number(n || 0)} passed`;
+}
 function incTodayPassed() {
   if (!todayBadge) return;
   const text = todayBadge.textContent || "";
@@ -113,7 +117,7 @@ function fillHeader() {
 // =========================
 // State
 // =========================
-let queue = []; // { piece_id, piece_code, piece_status, order_code, station_name }
+let queue = []; // rows from backend
 
 function norm(s) {
   return (s || "").trim().toLowerCase();
@@ -122,13 +126,13 @@ function norm(s) {
 function mapStatusToUi(piece_status) {
   if (piece_status === "completed") return "completed";
   if (piece_status === "broken") return "broken";
-  return "waiting"; // not_started / in_process
+  return "waiting";
 }
 
 function pillClass(uiStatus) {
   if (uiStatus === "waiting") return "status-not-started";
   if (uiStatus === "completed") return "status-completed";
-  return "status-delayed"; // broken
+  return "status-delayed";
 }
 function pillLabel(uiStatus) {
   if (uiStatus === "waiting") return "Waiting";
@@ -137,12 +141,18 @@ function pillLabel(uiStatus) {
 }
 
 // =========================
-// Load queue from backend
+// Load queue + today
 // =========================
 async function loadQueue() {
   showStatus("info", "Loading station queue...");
-  const data = await apiGet("/api/stations/my/queue");
-  queue = Array.isArray(data.data) ? data.data : [];
+  const [q, t] = await Promise.all([
+    apiGet("/api/stations/my/queue"),
+    apiGet("/api/stations/my/today"),
+  ]);
+
+  queue = Array.isArray(q.data) ? q.data : [];
+  setTodayPassed(t.passedToday || 0);
+
   renderOrdersList();
   showStatus("success", `Loaded ${queue.length} piece(s) in this station.`);
 }
@@ -160,8 +170,8 @@ function buildOrdersSummary() {
     if (!map.has(orderNo)) {
       map.set(orderNo, {
         orderNo,
-        customer: "—",
-        due: "—",
+        customer: p.customer || "—",
+        due: p.due_date ? String(p.due_date).slice(0, 10) : "—",
         pieces: 0,
         pending: 0,
       });
@@ -286,9 +296,9 @@ function renderOrderPieces() {
         return `
         <tr>
           <td><strong>${p.piece_code}</strong></td>
-          <td>—</td>
-          <td>—</td>
-          <td>—</td>
+          <td>${p.line_code || "—"}</td>
+          <td>${p.size || "—"}</td>
+          <td>${p.glass_type || "—"}</td>
           <td>
             <span class="status-pill ${pillClass(uiStatus)}">
               ${pillLabel(uiStatus)}
@@ -413,13 +423,15 @@ function renderPieceDetailsFromQueueRow(p) {
 
   if (pieceTitle) pieceTitle.textContent = `Glass #${p.piece_code}`;
   if (pieceSubtitle)
-    pieceSubtitle.textContent = `Order #${p.order_code || "—"} • Line —`;
+    pieceSubtitle.textContent = `Order #${p.order_code || "—"} • Line ${
+      p.line_code || "—"
+    }`;
 
-  if (pieceSize) pieceSize.textContent = "—";
-  if (pieceType) pieceType.textContent = "—";
+  if (pieceSize) pieceSize.textContent = p.size || "—";
+  if (pieceType) pieceType.textContent = p.glass_type || "—";
   if (pieceStage)
-    pieceStage.textContent = user?.stationName || p.station_name || "—";
-  if (pieceNotes) pieceNotes.textContent = "—";
+    pieceStage.textContent = p.station_name || user?.stationName || "—";
+  if (pieceNotes) pieceNotes.textContent = p.line_notes || "—";
 
   if (pieceStatusPill) {
     pieceStatusPill.className = `status-pill ${pillClass(uiStatus)}`;

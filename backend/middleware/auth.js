@@ -1,51 +1,94 @@
 const jwt = require("jsonwebtoken");
+const pool = require("../db");
 
-function authRequired(req, res, next) {
-  // Check Authorization header
-  let token = null;
+function extractToken(req) {
   const header = req.headers.authorization || "";
+  if (header.startsWith("Bearer ")) return header.slice(7);
 
-  if (header.startsWith("Bearer ")) {
-    token = header.slice(7);
-  }
+  if (req.cookies && req.cookies.auth_token) return req.cookies.auth_token;
 
-  // Also check cookies (if using cookies)
-  if (!token && req.cookies && req.cookies.auth_token) {
-    token = req.cookies.auth_token;
-  }
+  return null;
+}
 
+function extractUserId(payload) {
+  const raw =
+    payload.userId ??
+    payload.id ??
+    payload.user_id ??
+    payload.uid ??
+    payload.sub ??
+    null;
+
+  if (raw == null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : raw;
+}
+
+async function loadUserFromDb(userId) {
+  const [rows] = await pool.execute(
+    `
+    SELECT 
+      u.id,
+      u.username,
+      u.role,
+      u.home_page,
+      u.station_id,
+      u.is_active,
+      s.name AS station_name
+    FROM users u
+    LEFT JOIN stations s ON s.id = u.station_id
+    WHERE u.id = ? 
+    LIMIT 1
+    `,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+// =======================
+// AUTH REQUIRED
+// =======================
+async function authRequired(req, res, next) {
+  const token = extractToken(req);
   if (!token) {
-    return res.status(401).json({
-      ok: false,
-      error: "Authentication required",
-    });
+    return res
+      .status(401)
+      .json({ ok: false, error: "Authentication required" });
   }
 
   try {
     const secret = process.env.JWT_SECRET || "dev-secret";
     const payload = jwt.verify(token, secret);
 
-    // Extract userId from various possible fields
-    const userId =
-      payload.userId ??
-      payload.id ??
-      payload.user_id ??
-      payload.uid ??
-      payload.sub ??
-      null;
-
+    const userId = extractUserId(payload);
     if (!userId) {
-      return res.status(401).json({
-        ok: false,
-        error: "Invalid token: missing user identifier",
-      });
+      return res.status(401).json({ ok: false, error: "Invalid token" });
     }
 
-    // Add user info to request
+    const user = await loadUserFromDb(userId);
+    if (!user) {
+      return res.status(401).json({ ok: false, error: "User not found" });
+    }
+    if (user.is_active === 0) {
+      return res.status(403).json({ ok: false, error: "User is disabled" });
+    }
+
+    // ✅ Standardized fields + backward compatible
     req.user = {
-      ...payload,
-      userId: Number(userId) || userId,
-      token, // Optional: include token if needed
+      id: user.id,
+      userId: user.id,
+
+      username: user.username,
+      role: user.role,
+
+      homePage: user.home_page,
+      home_page: user.home_page, // (optional compatibility)
+
+      stationId: user.station_id,
+      station_id: user.station_id, // (compatibility)
+      stationName: user.station_name,
+
+      token, // optional
     };
 
     next();
@@ -68,78 +111,67 @@ function authRequired(req, res, next) {
       });
     }
 
-    return res.status(401).json({
-      ok: false,
-      error: "Authentication failed",
-    });
+    return res.status(401).json({ ok: false, error: "Authentication failed" });
   }
 }
 
-// Optional: Middleware for role-based access control
+// =======================
+// ROLE BASED ACCESS
+// =======================
 function requireRole(roles) {
+  const allowedRoles = Array.isArray(roles) ? roles : [roles];
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({
-        ok: false,
-        error: "Authentication required",
-      });
+      return res
+        .status(401)
+        .json({ ok: false, error: "Authentication required" });
     }
-
-    const userRole = req.user.role;
-    const allowedRoles = Array.isArray(roles) ? roles : [roles];
-
-    if (!allowedRoles.includes(userRole)) {
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         ok: false,
         error: "Insufficient permissions",
         requiredRoles: allowedRoles,
-        userRole: userRole,
+        userRole: req.user.role,
       });
     }
-
     next();
   };
 }
 
-// Optional: Soft auth - attach user if token exists but don't require it
-function optionalAuth(req, res, next) {
-  let token = null;
-  const header = req.headers.authorization || "";
+// =======================
+// OPTIONAL AUTH
+// =======================
+async function optionalAuth(req, res, next) {
+  const token = extractToken(req);
+  if (!token) return next();
 
-  if (header.startsWith("Bearer ")) {
-    token = header.slice(7);
+  try {
+    const secret = process.env.JWT_SECRET || "dev-secret";
+    const payload = jwt.verify(token, secret);
+
+    const userId = extractUserId(payload);
+    if (!userId) return next();
+
+    const user = await loadUserFromDb(userId);
+    if (!user || user.is_active === 0) return next();
+
+    req.user = {
+      id: user.id,
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      homePage: user.home_page,
+      stationId: user.station_id,
+      stationName: user.station_name,
+      token,
+    };
+
+    return next();
+  } catch (err) {
+    // optional => ignore invalid token
+    console.debug("Optional auth token error:", err.message);
+    return next();
   }
-
-  if (!token && req.cookies && req.cookies.auth_token) {
-    token = req.cookies.auth_token;
-  }
-
-  if (token) {
-    try {
-      const secret = process.env.JWT_SECRET || "dev-secret";
-      const payload = jwt.verify(token, secret);
-
-      const userId =
-        payload.userId ??
-        payload.id ??
-        payload.user_id ??
-        payload.uid ??
-        payload.sub ??
-        null;
-
-      if (userId) {
-        req.user = {
-          ...payload,
-          userId: Number(userId) || userId,
-        };
-      }
-    } catch (e) {
-      // Token is invalid but that's ok for optional auth
-      console.debug("Optional auth token error:", e.message);
-    }
-  }
-
-  next();
 }
 
 module.exports = {

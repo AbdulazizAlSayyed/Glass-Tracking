@@ -11,6 +11,7 @@
     <script src="js/auth.js" defer></script>
     <!-- Page logic -->
     <script src="js/intake.js" defer></script>
+    <script src="js/activation.js" defer></script>
 </head>
 
 <body>
@@ -24,6 +25,7 @@
                         queue).
                     </div>
                 </div>
+
                 <div class="main-header-right">
                     <span class="chip" id="userChip">User: —</span>
                     <a href="#" class="nav-item nav-item-logout" id="logoutBtn">
@@ -123,6 +125,38 @@
                     </table>
                 </div>
             </section>
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Broken pieces (Need replacement)</div>
+                        <div class="card-subtitle">Pieces marked broken by stations – create replacement and return to
+                            first station</div>
+                    </div>
+                </div>
+
+                <div class="station-status-message info" id="brokenStatus">Loading…</div>
+
+                <div class="table-wrapper" style="margin-top:10px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Broken code</th>
+                                <th>Station</th>
+                                <th>Broken at</th>
+                                <th>Order</th>
+                                <th>Client</th>
+                                <th>Line</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Notes</th>
+                                <th style="min-width:180px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brokenBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
         </main>
     </div>
 </body>

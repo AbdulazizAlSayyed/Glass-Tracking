@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Intake Order</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <script src="js/auth.js" defer></script>
+    <script src="js/intake-order.js" defer></script>
+</head>
+
+<body>
+    <div class="app-shell app-shell--no-sidebar">
+        <main class="main">
+            <header class="main-header">
+                <div>
+                    <div class="main-title">Plan Intake</div>
+                    <div class="main-subtitle">Select lines & quantities then send to factory.</div>
+                </div>
+
+                <div class="main-header-right">
+                    <span class="chip" id="ioOrderNo">Order: —</span>
+                    <a href="activation.html" class="nav-item">
+                        <div class="nav-item-icon"></div>
+                        <span>Back</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="station-status-message info" id="ioStatus">Loading…</div>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Order Summary</div>
+                        <div class="card-subtitle">Review details before intake</div>
+                    </div>
+                </div>
+
+                <div class="piece-grid">
+                    <div class="piece-item">
+                        <div class="piece-label">Order</div>
+                        <div class="piece-value" id="ioSummaryOrder">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">Client</div>
+                        <div class="piece-value" id="ioSummaryClient">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">PRF</div>
+                        <div class="piece-value" id="ioSummaryPrf">—</div>
+                    </div>
+                    <div class="piece-item">
+                        <div class="piece-label">Delivery</div>
+                        <div class="piece-value" id="ioSummaryDelivery">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Bulk Actions</div>
+                        <div class="card-subtitle">Quick selection helpers</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button class="btn btn-ghost" id="ioBulkAllBtn" type="button">Activate ALL remaining</button>
+
+                    <select class="input" style="max-width:260px;" id="ioBulkThicknessSelect">
+                        <option value="">Activate by thickness…</option>
+                    </select>
+
+                    <button class="btn btn-ghost" id="ioBulkThicknessBtn" type="button">Apply</button>
+
+                    <div style="color:#6b7280; font-size:0.85rem;" id="ioTotals">Selected lines: 0 | Pieces: 0</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Lines</div>
+                        <div class="card-subtitle">Choose quantities to activate now</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Line</th>
+                                <th>Type/Size</th>
+                                <th>Qty</th>
+                                <th>Activated</th>
+                                <th>Activate now</th>
+                                <th>Go</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ioLinesBody"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                    <button class="btn btn-primary" id="ioActivateBtn" type="button">Send to Factory</button>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>

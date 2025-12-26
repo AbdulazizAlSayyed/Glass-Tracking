@@ -1,14 +1,18 @@
-// js/intake.js
+// frontend/js/intake.js
 (() => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
   const els = {
+    userChip: document.getElementById("userChip"),
+    logoutBtn: document.getElementById("logoutBtn"),
+
     plannerStatus: document.getElementById("plannerStatus"),
     kpiDraft: document.getElementById("kpiDraft"),
     kpiActive: document.getElementById("kpiActive"),
     kpiPaused: document.getElementById("kpiPaused"),
     kpiPieces: document.getElementById("kpiPieces"),
+
     statusFilter: document.getElementById("statusFilter"),
     searchInput: document.getElementById("searchInput"),
     draftOnlyToggle: document.getElementById("draftOnlyToggle"),
@@ -18,8 +22,6 @@
 
   const state = { orders: [] };
 
-  const authHeaders = () => ({ Authorization: `Bearer ${token}` });
-
   const esc = (s) =>
     String(s ?? "")
       .replaceAll("&", "&amp;")
@@ -28,17 +30,41 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
 
+  const setStatus = (msg, type = "info") => {
+    if (!els.plannerStatus) return;
+    els.plannerStatus.textContent = msg;
+    els.plannerStatus.className = `station-status-message ${type}`;
+  };
+
+  function apiHeaders(extra = {}) {
+    return {
+      Authorization: `Bearer ${token}`,
+      ...extra,
+    };
+  }
+
+  async function apiGet(url) {
+    const res = await fetch(url, { headers: apiHeaders(), cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+
+    // لو 401 رجع للّوجن
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("/index.html?logout=1");
+      return null;
+    }
+
+    if (!res.ok || !data.ok)
+      throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
   const formatDate = (d) => {
     if (!d) return "—";
     const dt = new Date(d);
     if (Number.isNaN(dt.getTime())) return "—";
     return dt.toISOString().slice(0, 10);
-  };
-
-  const setStatus = (msg, type = "info") => {
-    if (!els.plannerStatus) return;
-    els.plannerStatus.textContent = msg;
-    els.plannerStatus.className = `station-status-message ${type}`;
   };
 
   const statusPill = (status) => {
@@ -64,14 +90,15 @@
     };
   };
 
+  function fillHeader() {
+    if (els.userChip)
+      els.userChip.textContent = `User: ${user?.username || "—"}`;
+  }
+
   async function loadKpis() {
     try {
-      const res = await fetch("/api/intake/kpis", {
-        headers: authHeaders(),
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) return;
+      const data = await apiGet("/api/intake/kpis");
+      if (!data) return;
 
       const k = data.kpis || {};
       els.kpiDraft.textContent = Number(k.draft || 0);
@@ -87,13 +114,13 @@
     try {
       setStatus("Loading intake queue…", "info");
 
-      els.ordersBody.innerHTML = `
-        <tr><td colspan="9" style="padding:12px; color:#6b7280;">Loading…</td></tr>
-      `;
+      if (els.ordersBody) {
+        els.ordersBody.innerHTML = `<tr><td colspan="9" style="padding:12px; color:#6b7280;">Loading…</td></tr>`;
+      }
 
-      const status = els.statusFilter.value || "all";
-      const q = (els.searchInput.value || "").trim();
-      const draftOnly = els.draftOnlyToggle.checked ? "1" : "0";
+      const status = els.statusFilter?.value || "all";
+      const q = (els.searchInput?.value || "").trim();
+      const draftOnly = els.draftOnlyToggle?.checked ? "1" : "0";
 
       const params = new URLSearchParams();
       if (status && status !== "all") params.set("status", status);
@@ -102,40 +129,27 @@
 
       const url =
         "/api/intake/orders" + (params.toString() ? `?${params}` : "");
-      const res = await fetch(url, {
-        headers: authHeaders(),
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.ok) {
-        els.ordersBody.innerHTML = `
-          <tr><td colspan="9" style="color:#dc2626; padding:12px;">
-            Failed to load orders: ${esc(data.error || res.status)}
-          </td></tr>
-        `;
-        setStatus("Failed to load orders.", "error");
-        return;
-      }
+      const data = await apiGet(url);
+      if (!data) return;
 
       state.orders = data.orders || [];
 
       if (!state.orders.length) {
-        els.ordersBody.innerHTML = `
-          <tr><td colspan="9" style="color:#6b7280; padding:12px;">No orders match your filters.</td></tr>
-        `;
+        els.ordersBody.innerHTML = `<tr><td colspan="9" style="color:#6b7280; padding:12px;">No orders match your filters.</td></tr>`;
         setStatus("No orders in this view.", "info");
         return;
       }
 
       els.ordersBody.innerHTML = "";
       state.orders.forEach((o) => {
+        const importDate = o.import_date ?? o.created_at ?? null;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${esc(o.order_no)}</td>
-          <td>${esc(o.client)}</td>
+          <td>${esc(o.client || "—")}</td>
           <td>${esc(o.prf || "—")}</td>
-          <td>${esc(formatDate(o.created_at))}</td>
+          <td>${esc(formatDate(importDate))}</td>
           <td>${esc(formatDate(o.delivery_date))}</td>
           <td>${Number(o.total_lines || 0)}</td>
           <td>${Number(o.activated_lines || 0)}</td>
@@ -156,10 +170,10 @@
       console.error("loadOrders failed:", e);
       els.ordersBody.innerHTML = `
         <tr><td colspan="9" style="color:#dc2626; padding:12px;">
-          Exception while loading orders: ${esc(e.message || e)}
+          Failed to load orders: ${esc(e.message || e)}
         </td></tr>
       `;
-      setStatus("Exception while loading orders.", "error");
+      setStatus("Failed to load orders.", "error");
     }
   }
 
@@ -172,21 +186,36 @@
     if (!order) return;
 
     sessionStorage.setItem("intakeCurrentOrder", JSON.stringify(order));
-    window.location.href = `plan-intake.html?orderId=${orderId}`;
+
+    // ✅ انت عندك intake-order
+    window.location.href = `intake-order.html?orderId=${orderId}`;
   }
 
   function init() {
     if (!user || !token) {
-      window.location.replace("./index.html?logout=1");
+      window.location.replace("/index.html?logout=1");
       return;
     }
+
+    fillHeader();
+
+    els.logoutBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("/index.html?logout=1");
+    });
 
     loadKpis();
     loadOrders();
 
     els.statusFilter?.addEventListener("change", loadOrders);
     els.draftOnlyToggle?.addEventListener("change", loadOrders);
-    els.refreshBtn?.addEventListener("click", loadOrders);
+    els.refreshBtn?.addEventListener("click", () => {
+      loadKpis();
+      loadOrders();
+    });
+
     els.ordersBody?.addEventListener("click", handleOrderClick);
 
     const debounced = debounce(loadOrders, 250);
