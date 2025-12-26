@@ -1,8 +1,13 @@
+// ===== Auth data =====
+const token = localStorage.getItem("token");
+const user = JSON.parse(localStorage.getItem("user") || "null");
+
+// ===== Logout =====
 const logoutBtn = document.getElementById("logoutBtn");
 logoutBtn?.addEventListener("click", () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  window.location.href = "/index.html";
+  window.location.replace("/index.html?logout=1");
 });
 
 function authHeaders() {
@@ -28,9 +33,7 @@ function setLastUpdateNow() {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
-  if (chipLastUpdate) {
-    chipLastUpdate.textContent = `Last update: ${hh}:${mm}`;
-  }
+  chipLastUpdate && (chipLastUpdate.textContent = `Last update: ${hh}:${mm}`);
 }
 
 function pillForStatus(status) {
@@ -59,7 +62,7 @@ function renderKpis() {
 
   const chip = document.getElementById("kpiOrdersTodayChip");
   if (chip) {
-    const v = k.ordersToday || 0;
+    const v = Number(k.ordersToday || 0);
     chip.textContent = v
       ? `+${Math.max(1, Math.floor(v / 2))} vs yesterday`
       : "No change";
@@ -71,7 +74,7 @@ function renderKpis() {
   document.getElementById("urgentReadyDelivery").textContent =
     k.deliveryReady ?? 0;
 
-  // urgentBreakStage من stageLoad
+  // urgentBreakStage from stageLoad
   const st = DASHBOARD.stageLoad || [];
   if (st.length) {
     const maxBrokenStage = st.reduce(
@@ -91,12 +94,14 @@ function renderKpis() {
 // =========================
 function renderRecentOrders() {
   const body = document.getElementById("recentOrdersBody");
-  const search = (document.getElementById("orderSearch").value || "")
+  if (!body) return;
+
+  const search = (document.getElementById("orderSearch")?.value || "")
     .trim()
     .toLowerCase();
 
   const orders = (DASHBOARD.orders || []).filter((o) =>
-    (o.orderNo + " " + o.client).toLowerCase().includes(search)
+    (String(o.orderNo) + " " + String(o.client)).toLowerCase().includes(search)
   );
 
   const list = orders.slice(0, 10);
@@ -128,9 +133,7 @@ function renderRecentOrders() {
     `
       )
       .join("") ||
-    `
-      <tr><td colspan="9" style="color:#6b7280; font-size:.85rem;">No orders found.</td></tr>
-    `;
+    `<tr><td colspan="9" style="color:#6b7280; font-size:.85rem;">No orders found.</td></tr>`;
 }
 
 // =========================
@@ -138,25 +141,30 @@ function renderRecentOrders() {
 // =========================
 function renderStageLoad() {
   const body = document.getElementById("stageLoadBody");
+  if (!body) return;
+
   const data = DASHBOARD.stageLoad || [];
   if (!data.length) {
     body.innerHTML = `
-        <tr>
-          <td colspan="5" style="color:#6b7280; font-size:.85rem;">
-            No stages data.
-          </td>
-        </tr>`;
+      <tr>
+        <td colspan="5" style="color:#6b7280; font-size:.85rem;">
+          No stages data.
+        </td>
+      </tr>`;
     return;
   }
 
-  const maxLoad = Math.max(...data.map((s) => s.waiting + s.inProgress));
+  const maxLoad = Math.max(
+    ...data.map((s) => (s.waiting || 0) + (s.inProgress || 0)),
+    1
+  );
 
   body.innerHTML = data
     .map((s) => {
-      const load = s.waiting + s.inProgress;
-      const pct = maxLoad ? Math.round((load / maxLoad) * 100) : 0;
+      const load = (s.waiting || 0) + (s.inProgress || 0);
+      const pct = Math.round((load / maxLoad) * 100);
       const brokenCell =
-        s.broken > 3
+        (s.broken || 0) > 3
           ? `<span class="pill red">${s.broken}</span>`
           : `<span class="pill">${s.broken}</span>`;
       return `
@@ -181,6 +189,8 @@ function renderStageLoad() {
 // =========================
 function renderAlerts() {
   const listEl = document.getElementById("alertsList");
+  if (!listEl) return;
+
   const data = DASHBOARD.alerts || [];
   if (!data.length) {
     listEl.innerHTML =
@@ -208,14 +218,16 @@ function renderAlerts() {
 // =========================
 function renderAudit() {
   const body = document.getElementById("auditBody");
+  if (!body) return;
+
   const data = DASHBOARD.audit || [];
   if (!data.length) {
     body.innerHTML = `
-        <tr>
-          <td colspan="4" style="color:#6b7280; font-size:.85rem;">
-            No recent activity.
-          </td>
-        </tr>`;
+      <tr>
+        <td colspan="4" style="color:#6b7280; font-size:.85rem;">
+          No recent activity.
+        </td>
+      </tr>`;
     return;
   }
 
@@ -241,7 +253,9 @@ const orderModal = document.getElementById("orderModal");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 
 function openOrderModal(orderNo) {
-  const o = (DASHBOARD.orders || []).find((x) => x.orderNo === orderNo);
+  const o = (DASHBOARD.orders || []).find(
+    (x) => String(x.orderNo) === String(orderNo)
+  );
   if (!o) return;
 
   document.getElementById("modalTitle").textContent = `Order #${o.orderNo}`;
@@ -271,7 +285,6 @@ function openOrderModal(orderNo) {
   brokenPill.textContent = `Broken today: ${o.brokenToday || 0}`;
   brokenPill.className = "pill " + (o.brokenToday ? "red" : "green");
 
-  // Timeline بسيط (نحط stages من الـ stageLoad بس)
   const tl = document.getElementById("modalTimeline");
   const stages = [
     "Cutting",
@@ -288,7 +301,7 @@ function openOrderModal(orderNo) {
         <div class="tl-item">
           <div class="tl-left">
             <div class="tl-stage">${st}</div>
-            <div class="tl-meta">Stage snapshot (not detailed per order yet)</div>
+            <div class="tl-meta">Stage snapshot</div>
           </div>
           <div class="tl-right">
             <span class="${cls}">—</span>
@@ -298,16 +311,16 @@ function openOrderModal(orderNo) {
     })
     .join("");
 
-  orderModal.classList.add("active");
+  orderModal?.classList.add("active");
 }
 
 function closeOrderModal() {
-  orderModal.classList.remove("active");
+  orderModal?.classList.remove("active");
 }
 
-modalCloseBtn.addEventListener("click", closeOrderModal);
+modalCloseBtn?.addEventListener("click", closeOrderModal);
 
-document.getElementById("recentOrdersBody").addEventListener("click", (e) => {
+document.getElementById("recentOrdersBody")?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-open-order]");
   if (!btn) return;
   openOrderModal(btn.dataset.openOrder);
@@ -315,19 +328,18 @@ document.getElementById("recentOrdersBody").addEventListener("click", (e) => {
 
 document
   .getElementById("orderSearch")
-  .addEventListener("input", renderRecentOrders);
+  ?.addEventListener("input", renderRecentOrders);
 
 // ===== Quick actions =====
 function openFilteredOrders(status) {
   window.location.href = `orders.html?status=${encodeURIComponent(status)}`;
 }
-
 window.openFilteredOrders = openFilteredOrders;
 
 function scrollToAlerts() {
   document
     .getElementById("alertsSection")
-    .scrollIntoView({ behavior: "smooth", block: "start" });
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 window.scrollToAlerts = scrollToAlerts;
 
@@ -339,19 +351,15 @@ async function loadDashboard() {
       return;
     }
 
-    if (chipUser) {
-      chipUser.textContent = `User: ${user.username || "Manager"}`;
-    }
-    if (chipFactory) {
-      chipFactory.textContent = "Factory: Tripoli";
-    }
+    chipUser && (chipUser.textContent = `User: ${user.username || "Manager"}`);
+    chipFactory && (chipFactory.textContent = "Factory: Tripoli");
 
     const res = await fetch("/api/manager/dashboard", {
       headers: authHeaders(),
       cache: "no-store",
     });
-    const data = await res.json().catch(() => ({}));
 
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
       console.error("Dashboard API error:", data);
       return;
@@ -375,7 +383,7 @@ async function loadDashboard() {
 }
 
 // ===== Refresh button =====
-document.getElementById("refreshBtn").addEventListener("click", loadDashboard);
+document.getElementById("refreshBtn")?.addEventListener("click", loadDashboard);
 
 // ===== Init =====
 loadDashboard();

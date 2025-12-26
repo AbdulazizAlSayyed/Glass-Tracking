@@ -1,34 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
-<script>
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    const token = localStorage.getItem("token");
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("logout") === "1") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.replace("/index.html?logout=1");
-    }
-
-    if (!user || !token) {
-        window.location.replace("/index.html?logout=1");
-    } else {
-        const current = location.pathname.split("/").pop() || "index.html";
-        if (user.homePage && user.homePage !== current) {
-            window.location.replace("/" + user.homePage);
-        }
-    }
-</script>
-
-
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Manager Dashboard</title>
+
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/manager.css" />
+
+    <script>
+        (() => {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            const token = localStorage.getItem("token");
+            const params = new URLSearchParams(window.location.search);
+
+            if (params.get("logout") === "1") {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.replace("/index.html?logout=1");
+                return;
+            }
+
+            if (!user || !token) {
+                window.location.replace("/index.html?logout=1");
+                return;
+            }
+
+            const role = String(user.role || "").toLowerCase();
+            if (!["manager", "admin"].includes(role)) {
+                const home = user.homePage || "index.html";
+                window.location.replace("/" + home);
+                return;
+            }
+        })();
+    </script>
 </head>
 
 <body>
@@ -41,7 +47,8 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="manager-dashboard.html" class="nav-item active">
+                <!-- ✅ بدل manager-dashboard.html -->
+                <a href="dashborad.html" class="nav-item active">
                     <div class="nav-item-icon"></div>
                     <span>Dashboard</span>
                 </a>
@@ -89,7 +96,7 @@
                 <a href="notifications.html" class="nav-item">
                     <div class="nav-item-icon"></div>
                     <span>Notifications</span>
-                    <span class="notif-badge" id="notifBadge" title="Unread notifications">3</span>
+                    <span class="notif-badge" id="notifBadge" title="Unread notifications">0</span>
                 </a>
             </nav>
         </aside>
@@ -107,14 +114,15 @@
                     <span class="chip" id="chipUser">User: Manager</span>
                     <span class="badge" id="chipFactory">Factory: Tripoli</span>
                     <span class="badge" id="chipLastUpdate">Last update: --:--</span>
+
                     <button class="btn-icon" id="refreshBtn" type="button">⟳ Refresh</button>
                     <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">
                         Open Live Board
                     </button>
+
                     <button type="button" id="logoutBtn" class="btn btn-ghost">
                         Logout
                     </button>
-
                 </div>
             </header>
 
@@ -123,7 +131,7 @@
                 <div class="card-header">
                     <div>
                         <div class="card-title">Today’s KPIs</div>
-                        <div class="card-subtitle">Live numbers (front demo now — backend later)</div>
+                        <div class="card-subtitle">Live numbers (backend)</div>
                     </div>
                 </div>
 
@@ -189,7 +197,8 @@
                             <button class="btn btn-primary btn-small" type="button"
                                 onclick="window.location.href='activation.html'">Open activation</button>
                             <button class="btn btn-ghost btn-small" type="button"
-                                onclick="openFilteredOrders('Draft')">View list</button>
+                                onclick="openFilteredOrders('Draft')">View
+                                list</button>
                         </div>
                     </div>
 
@@ -206,7 +215,8 @@
                             <button class="btn btn-primary btn-small" type="button"
                                 onclick="window.location.href='reports.html'">Open report</button>
                             <button class="btn btn-ghost btn-small" type="button"
-                                onclick="openFilteredOrders('Delayed')">View list</button>
+                                onclick="openFilteredOrders('Delayed')">View
+                                list</button>
                         </div>
                     </div>
 
@@ -329,7 +339,7 @@
                         <div class="alerts-list" id="alertsList"></div>
                     </div>
 
-                    <!-- Latest activity (Audit snippet) -->
+                    <!-- Latest activity -->
                     <div class="card">
                         <div class="card-header">
                             <div>
@@ -337,7 +347,8 @@
                                 <div class="card-subtitle">Mini audit log (who did what)</div>
                             </div>
                             <button class="btn btn-ghost" type="button" onclick="window.location.href='audit.html'">View
-                                full audit</button>
+                                full
+                                audit</button>
                         </div>
 
                         <div class="table-wrapper">
@@ -384,7 +395,8 @@
                 <button class="btn btn-ghost" type="button" onclick="window.location.href='orders.html'">Open in
                     Orders</button>
                 <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">Open
-                    Live Tracking</button>
+                    Live
+                    Tracking</button>
             </div>
         </div>
     </div>
