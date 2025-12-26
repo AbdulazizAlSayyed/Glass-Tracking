@@ -5,12 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Manager Dashboard</title>
-
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/manager.css" />
 
     <script>
-        (() => {
+        // Auth guard
+        (function () {
             const user = JSON.parse(localStorage.getItem("user") || "null");
             const token = localStorage.getItem("token");
             const params = new URLSearchParams(window.location.search);
@@ -27,10 +27,9 @@
                 return;
             }
 
-            const role = String(user.role || "").toLowerCase();
-            if (!["manager", "admin"].includes(role)) {
-                const home = user.homePage || "index.html";
-                window.location.replace("/" + home);
+            const current = location.pathname.split("/").pop() || "dashboard.html";
+            if (user.homePage && user.homePage !== current) {
+                window.location.replace("/" + user.homePage);
                 return;
             }
         })();
@@ -47,8 +46,7 @@
             </div>
 
             <nav class="sidebar-nav">
-                <!-- ✅ بدل manager-dashboard.html -->
-                <a href="dashborad.html" class="nav-item active">
+                <a href="dashboard.html" class="nav-item active">
                     <div class="nav-item-icon"></div>
                     <span>Dashboard</span>
                 </a>
@@ -114,15 +112,11 @@
                     <span class="chip" id="chipUser">User: Manager</span>
                     <span class="badge" id="chipFactory">Factory: Tripoli</span>
                     <span class="badge" id="chipLastUpdate">Last update: --:--</span>
-
                     <button class="btn-icon" id="refreshBtn" type="button">⟳ Refresh</button>
                     <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">
                         Open Live Board
                     </button>
-
-                    <button type="button" id="logoutBtn" class="btn btn-ghost">
-                        Logout
-                    </button>
+                    <button type="button" id="logoutBtn" class="btn btn-ghost">Logout</button>
                 </div>
             </header>
 
@@ -131,7 +125,7 @@
                 <div class="card-header">
                     <div>
                         <div class="card-title">Today’s KPIs</div>
-                        <div class="card-subtitle">Live numbers (backend)</div>
+                        <div class="card-subtitle">Live numbers from backend</div>
                     </div>
                 </div>
 
@@ -157,7 +151,7 @@
                     <div class="stat-card">
                         <div class="stat-label">Completed today</div>
                         <div class="stat-value" id="kpiCompletedToday">0</div>
-                        <div class="stat-chip">Ready / Delivered</div>
+                        <div class="stat-chip">Pieces finished</div>
                     </div>
 
                     <div class="stat-card">
@@ -169,7 +163,7 @@
                     <div class="stat-card">
                         <div class="stat-label">Delivery ready</div>
                         <div class="stat-value" id="kpiDeliveryReady">0</div>
-                        <div class="stat-chip">Packing done</div>
+                        <div class="stat-chip">Completed orders</div>
                     </div>
                 </div>
             </section>
@@ -195,10 +189,12 @@
                         <div class="quick-value" id="urgentDraft">0</div>
                         <div class="quick-actions">
                             <button class="btn btn-primary btn-small" type="button"
-                                onclick="window.location.href='activation.html'">Open activation</button>
-                            <button class="btn btn-ghost btn-small" type="button"
-                                onclick="openFilteredOrders('Draft')">View
-                                list</button>
+                                onclick="window.location.href='activation.html'">
+                                Open activation
+                            </button>
+                            <button class="btn btn-ghost btn-small" type="button" onclick="openFilteredOrders('Draft')">
+                                View list
+                            </button>
                         </div>
                     </div>
 
@@ -206,17 +202,20 @@
                         <div class="quick-top">
                             <div>
                                 <div class="quick-title">Late / at-risk orders</div>
-                                <div class="quick-sub">Due soon or delayed in stages</div>
+                                <div class="quick-sub">Due date passed and not completed</div>
                             </div>
                             <span class="pill red">Attention</span>
                         </div>
                         <div class="quick-value" id="urgentLate">0</div>
                         <div class="quick-actions">
                             <button class="btn btn-primary btn-small" type="button"
-                                onclick="window.location.href='reports.html'">Open report</button>
+                                onclick="window.location.href='reports.html'">
+                                Open report
+                            </button>
                             <button class="btn btn-ghost btn-small" type="button"
-                                onclick="openFilteredOrders('Delayed')">View
-                                list</button>
+                                onclick="openFilteredOrders('Delayed')">
+                                View list
+                            </button>
                         </div>
                     </div>
 
@@ -231,32 +230,39 @@
                         <div class="quick-value" id="urgentBreakStage">—</div>
                         <div class="quick-actions">
                             <button class="btn btn-primary btn-small" type="button"
-                                onclick="window.location.href='reports.html#broken'">Broken report</button>
-                            <button class="btn btn-ghost btn-small" type="button" onclick="scrollToAlerts()">See
-                                alerts</button>
+                                onclick="window.location.href='reports.html#broken'">
+                                Broken report
+                            </button>
+                            <button class="btn btn-ghost btn-small" type="button" onclick="scrollToAlerts()">
+                                See alerts
+                            </button>
                         </div>
                     </div>
 
                     <div class="card quick-card">
                         <div class="quick-top">
                             <div>
-                                <div class="quick-title">Ready deliveries</div>
-                                <div class="quick-sub">Orders ready for partial/full shipment</div>
+                                <div class="quick-title">Completed orders</div>
+                                <div class="quick-sub">Ready to deliver</div>
                             </div>
                             <span class="pill green">Delivery</span>
                         </div>
                         <div class="quick-value" id="urgentReadyDelivery">0</div>
                         <div class="quick-actions">
                             <button class="btn btn-primary btn-small" type="button"
-                                onclick="window.location.href='delivery.html'">Open delivery</button>
+                                onclick="window.location.href='delivery.html'">
+                                Open delivery
+                            </button>
                             <button class="btn btn-ghost btn-small" type="button"
-                                onclick="openFilteredOrders('Delivery Ready')">View list</button>
+                                onclick="openFilteredOrders('Completed')">
+                                View list
+                            </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Recent orders + Order modal -->
+            <!-- Recent orders -->
             <section class="card">
                 <div class="card-header">
                     <div>
@@ -298,7 +304,7 @@
                     <div class="card-header">
                         <div>
                             <div class="card-title">Stage load</div>
-                            <div class="card-subtitle">Waiting / in progress / broken today (per stage)</div>
+                            <div class="card-subtitle">Waiting / In progress / Broken today (per stage)</div>
                         </div>
                     </div>
 
@@ -316,12 +322,6 @@
                             <tbody id="stageLoadBody"></tbody>
                         </table>
                     </div>
-
-                    <div class="live-legend" style="margin-top:10px;">
-                        <div class="live-legend-item"><span class="live-legend-dot blue"></span> Load bar</div>
-                        <div class="live-legend-item"><span class="live-legend-dot red"></span> Broken alert</div>
-                        <div class="live-legend-item"><span class="live-legend-dot gray"></span> Normal</div>
-                    </div>
                 </div>
 
                 <div style="display:flex; flex-direction:column; gap:16px;">
@@ -333,7 +333,9 @@
                                 <div class="card-subtitle">Issues that need attention</div>
                             </div>
                             <button class="btn btn-ghost" type="button"
-                                onclick="window.location.href='notifications.html'">Open notifications</button>
+                                onclick="window.location.href='notifications.html'">
+                                Open notifications
+                            </button>
                         </div>
 
                         <div class="alerts-list" id="alertsList"></div>
@@ -347,8 +349,7 @@
                                 <div class="card-subtitle">Mini audit log (who did what)</div>
                             </div>
                             <button class="btn btn-ghost" type="button" onclick="window.location.href='audit.html'">View
-                                full
-                                audit</button>
+                                full audit</button>
                         </div>
 
                         <div class="table-wrapper">
@@ -390,14 +391,6 @@
             </div>
 
             <div class="timeline" id="modalTimeline"></div>
-
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap;">
-                <button class="btn btn-ghost" type="button" onclick="window.location.href='orders.html'">Open in
-                    Orders</button>
-                <button class="btn btn-primary" type="button" onclick="window.location.href='live-tracking.html'">Open
-                    Live
-                    Tracking</button>
-            </div>
         </div>
     </div>
 

@@ -1,19 +1,17 @@
-// ===== Auth data =====
+// ===== Auth context =====
 const token = localStorage.getItem("token");
 const user = JSON.parse(localStorage.getItem("user") || "null");
 
-// ===== Logout =====
+// ===== Logout button =====
 const logoutBtn = document.getElementById("logoutBtn");
 logoutBtn?.addEventListener("click", () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  window.location.replace("/index.html?logout=1");
+  window.location.href = "/index.html?logout=1";
 });
 
 function authHeaders() {
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return { Authorization: `Bearer ${token}` };
 }
 
 // ===== Global data coming from backend =====
@@ -33,15 +31,14 @@ function setLastUpdateNow() {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
-  chipLastUpdate && (chipLastUpdate.textContent = `Last update: ${hh}:${mm}`);
+  if (chipLastUpdate) chipLastUpdate.textContent = `Last update: ${hh}:${mm}`;
 }
 
 function pillForStatus(status) {
   const s = (status || "").toLowerCase();
   if (s.includes("delayed")) return "status-pill status-delayed";
   if (s.includes("completed")) return "status-pill status-completed";
-  if (s.includes("active") || s.includes("ready"))
-    return "status-pill status-in-progress";
+  if (s.includes("active")) return "status-pill status-in-progress";
   return "status-pill status-not-started";
 }
 
@@ -68,17 +65,15 @@ function renderKpis() {
       : "No change";
   }
 
-  // urgent cards
   document.getElementById("urgentDraft").textContent = k.draftOrders ?? 0;
   document.getElementById("urgentLate").textContent = k.delayedOrders ?? 0;
   document.getElementById("urgentReadyDelivery").textContent =
     k.deliveryReady ?? 0;
 
-  // urgentBreakStage from stageLoad
   const st = DASHBOARD.stageLoad || [];
   if (st.length) {
     const maxBrokenStage = st.reduce(
-      (best, s) => (s.broken > best.broken ? s : best),
+      (best, s) => (Number(s.broken) > Number(best.broken) ? s : best),
       st[0]
     );
     document.getElementById(
@@ -94,14 +89,12 @@ function renderKpis() {
 // =========================
 function renderRecentOrders() {
   const body = document.getElementById("recentOrdersBody");
-  if (!body) return;
-
-  const search = (document.getElementById("orderSearch")?.value || "")
+  const search = (document.getElementById("orderSearch").value || "")
     .trim()
     .toLowerCase();
 
   const orders = (DASHBOARD.orders || []).filter((o) =>
-    (String(o.orderNo) + " " + String(o.client)).toLowerCase().includes(search)
+    `${o.orderNo} ${o.client}`.toLowerCase().includes(search)
   );
 
   const list = orders.slice(0, 10);
@@ -126,9 +119,11 @@ function renderRecentOrders() {
         <td><span class="${pillForStatus(o.status)}">${o.status}</span></td>
         <td>${o.due || "—"}</td>
         <td>${o.lastUpdate || "—"}</td>
-        <td><button class="link-btn" data-open-order="${
-          o.orderNo
-        }" type="button">Open</button></td>
+        <td>
+          <button class="link-btn" data-open-order="${
+            o.orderNo
+          }" type="button">Open</button>
+        </td>
       </tr>
     `
       )
@@ -141,30 +136,24 @@ function renderRecentOrders() {
 // =========================
 function renderStageLoad() {
   const body = document.getElementById("stageLoadBody");
-  if (!body) return;
-
   const data = DASHBOARD.stageLoad || [];
+
   if (!data.length) {
     body.innerHTML = `
-      <tr>
-        <td colspan="5" style="color:#6b7280; font-size:.85rem;">
-          No stages data.
-        </td>
-      </tr>`;
+      <tr><td colspan="5" style="color:#6b7280; font-size:.85rem;">No stages data.</td></tr>`;
     return;
   }
 
   const maxLoad = Math.max(
-    ...data.map((s) => (s.waiting || 0) + (s.inProgress || 0)),
-    1
+    ...data.map((s) => Number(s.waiting) + Number(s.inProgress))
   );
 
   body.innerHTML = data
     .map((s) => {
-      const load = (s.waiting || 0) + (s.inProgress || 0);
-      const pct = Math.round((load / maxLoad) * 100);
+      const load = Number(s.waiting) + Number(s.inProgress);
+      const pct = maxLoad ? Math.round((load / maxLoad) * 100) : 0;
       const brokenCell =
-        (s.broken || 0) > 3
+        Number(s.broken) > 3
           ? `<span class="pill red">${s.broken}</span>`
           : `<span class="pill">${s.broken}</span>`;
       return `
@@ -174,9 +163,7 @@ function renderStageLoad() {
           <td>${s.inProgress}</td>
           <td>${brokenCell}</td>
           <td>
-            <div class="mini-bar" title="Load ${pct}%">
-              <span style="width:${pct}%;"></span>
-            </div>
+            <div class="mini-bar" title="Load ${pct}%"><span style="width:${pct}%;"></span></div>
           </td>
         </tr>
       `;
@@ -189,9 +176,8 @@ function renderStageLoad() {
 // =========================
 function renderAlerts() {
   const listEl = document.getElementById("alertsList");
-  if (!listEl) return;
-
   const data = DASHBOARD.alerts || [];
+
   if (!data.length) {
     listEl.innerHTML =
       '<div style="color:#6b7280; font-size:.8rem;">No alerts for now.</div>';
@@ -218,16 +204,10 @@ function renderAlerts() {
 // =========================
 function renderAudit() {
   const body = document.getElementById("auditBody");
-  if (!body) return;
-
   const data = DASHBOARD.audit || [];
+
   if (!data.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="4" style="color:#6b7280; font-size:.85rem;">
-          No recent activity.
-        </td>
-      </tr>`;
+    body.innerHTML = `<tr><td colspan="4" style="color:#6b7280; font-size:.85rem;">No recent activity.</td></tr>`;
     return;
   }
 
@@ -253,9 +233,7 @@ const orderModal = document.getElementById("orderModal");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 
 function openOrderModal(orderNo) {
-  const o = (DASHBOARD.orders || []).find(
-    (x) => String(x.orderNo) === String(orderNo)
-  );
+  const o = (DASHBOARD.orders || []).find((x) => x.orderNo === orderNo);
   if (!o) return;
 
   document.getElementById("modalTitle").textContent = `Order #${o.orderNo}`;
@@ -269,7 +247,7 @@ function openOrderModal(orderNo) {
     "pill " +
     (o.status === "Delayed"
       ? "red"
-      : ["Completed", "Delivery Ready"].includes(o.status)
+      : o.status === "Completed"
       ? "green"
       : "blue");
 
@@ -286,15 +264,12 @@ function openOrderModal(orderNo) {
   brokenPill.className = "pill " + (o.brokenToday ? "red" : "green");
 
   const tl = document.getElementById("modalTimeline");
-  const stages = [
-    "Cutting",
-    "Grinding",
-    "Washing",
-    "Furnace",
-    "Packing",
-    "Delivery",
-  ];
-  tl.innerHTML = stages
+  const stages = (DASHBOARD.stageLoad || []).map((x) => x.stage);
+  const safeStages = stages.length
+    ? stages
+    : ["Cutting", "Grinding", "Washing", "Furnace", "Packing", "Delivery"];
+
+  tl.innerHTML = safeStages
     .map((st) => {
       const cls = st === o.stage ? "pill blue" : "pill";
       return `
@@ -311,11 +286,11 @@ function openOrderModal(orderNo) {
     })
     .join("");
 
-  orderModal?.classList.add("active");
+  orderModal.classList.add("active");
 }
 
 function closeOrderModal() {
-  orderModal?.classList.remove("active");
+  orderModal.classList.remove("active");
 }
 
 modalCloseBtn?.addEventListener("click", closeOrderModal);
@@ -351,8 +326,8 @@ async function loadDashboard() {
       return;
     }
 
-    chipUser && (chipUser.textContent = `User: ${user.username || "Manager"}`);
-    chipFactory && (chipFactory.textContent = "Factory: Tripoli");
+    if (chipUser) chipUser.textContent = `User: ${user.username || "Manager"}`;
+    if (chipFactory) chipFactory.textContent = "Factory: Tripoli";
 
     const res = await fetch("/api/manager/dashboard", {
       headers: authHeaders(),
@@ -382,7 +357,6 @@ async function loadDashboard() {
   }
 }
 
-// ===== Refresh button =====
 document.getElementById("refreshBtn")?.addEventListener("click", loadDashboard);
 
 // ===== Init =====
