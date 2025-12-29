@@ -3,14 +3,16 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Orders</title>
     <link rel="stylesheet" href="css/style.css" />
+
+    <!-- ✅ single auth source -->
+    <script src="js/auth.js"></script>
 </head>
 
 <body>
     <div class="app-shell">
-
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
                 <div class="logo-icon"></div>
@@ -18,53 +20,84 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="manager-dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Dashboard</span>
+                <a href="dashboard.html" class="nav-item ">
+                    <div class="nav-item-icon"></div>
+                    <span>Dashboard</span>
                 </a>
 
                 <a href="orders.html" class="nav-item active">
-                    <div class="nav-item-icon"></div><span>Orders</span>
-                </a>
-
-                <a href="activation.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Activation</span>
+                    <div class="nav-item-icon"></div>
+                    <span>Orders</span>
                 </a>
 
                 <a href="live-tracking.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Live Tracking</span>
+                    <div class="nav-item-icon"></div>
+                    <span>Live Tracking</span>
+                </a>
+
+                <a href="reports.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Reports</span>
+                </a>
+
+                <a href="delivery.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Delivery</span>
+                </a>
+
+                <a href="users.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Users</span>
+                </a>
+
+                <a href="workflow.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Workflow</span>
+                </a>
+
+                <a href="audit.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Audit Log</span>
+                </a>
+
+                <a href="settings.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Settings</span>
+                </a>
+
+                <a href="notifications.html" class="nav-item">
+                    <div class="nav-item-icon"></div>
+                    <span>Notifications</span>
+                    <span class="notif-badge" id="notifBadge" title="Unread notifications">0</span>
                 </a>
             </nav>
         </aside>
-
-        <!-- Main Content -->
         <main class="main">
-
-            <!-- Header -->
             <header class="header">
                 <h1>Orders</h1>
                 <div class="chip-row">
-                    <span class="chip" id="chipUser">User: Manager</span>
+                    <span class="chip" id="userChip">User: --</span>
                     <span class="chip" id="chipFactory">Factory: Tripoli</span>
+                    <button id="logoutBtn" class="btn btn-ghost" type="button">Logout</button>
                 </div>
             </header>
 
-            <!-- Filters -->
             <section class="filters-section">
                 <div class="filters-row">
-
                     <div class="filter">
                         <label>Search</label>
-                        <input type="text" id="searchInput" placeholder="Order number, client, PRF...">
+                        <input type="text" id="searchInput" placeholder="Order number, client, PRF..." />
                     </div>
 
                     <div class="filter">
                         <label>Status</label>
                         <select id="statusFilter">
                             <option value="all">All</option>
-                            <option value="draft">Draft</option>
-                            <option value="active">Active</option>
-                            <option value="delivery-ready">Delivery Ready</option>
-                            <option value="completed">Completed</option>
+                            <option value="Draft">Draft</option>
+                            <option value="Active">Active</option>
+                            <option value="Paused">Paused</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
                         </select>
                     </div>
 
@@ -72,35 +105,34 @@
                         <label>Stage</label>
                         <select id="stageFilter">
                             <option value="all">All</option>
-                            <option value="cut">Cut</option>
-                            <option value="polish">Polish</option>
-                            <option value="wash">Wash</option>
-                            <option value="furnace">Furnace</option>
-                            <option value="packing">Packing</option>
+                            <option value="CUTTING">CUTTING</option>
+                            <option value="GRINDING">GRINDING</option>
+                            <option value="WASHING">WASHING</option>
+                            <option value="FURNACE">FURNACE</option>
+                            <option value="LOADING">LOADING</option>
+                            <option value="DELIVERY">DELIVERY</option>
                         </select>
                     </div>
 
                     <div class="filter">
-                        <label>Date From</label>
-                        <input type="date" id="dateFrom">
+                        <label>Delivery From</label>
+                        <input type="date" id="dateFrom" />
                     </div>
 
                     <div class="filter">
-                        <label>Date To</label>
-                        <input type="date" id="dateTo">
+                        <label>Delivery To</label>
+                        <input type="date" id="dateTo" />
                     </div>
 
                     <div class="filter">
                         <label class="checkbox">
-                            <input type="checkbox" id="includeCompleted">
+                            <input type="checkbox" id="includeCompleted" />
                             <span>Include Completed</span>
                         </label>
                     </div>
-
                 </div>
             </section>
 
-            <!-- Orders Table -->
             <section class="card">
                 <h2>Orders List</h2>
 
@@ -111,12 +143,13 @@
                             <th>Client</th>
                             <th>PRF</th>
                             <th>Status</th>
-                            <th>Qty</th>
+                            <th>Pieces</th>
                             <th>Stage</th>
                             <th>Delivery Date</th>
                             <th>Action</th>
                         </tr>
                     </thead>
+
                     <tbody id="ordersTableBody">
                         <tr>
                             <td colspan="8" style="text-align:center">Loading...</td>
@@ -124,16 +157,13 @@
                     </tbody>
                 </table>
 
-                <!-- Pagination -->
                 <div class="pagination">
-                    <button id="prevPage">Prev</button>
+                    <button id="prevPage" type="button">Prev</button>
                     <span id="pageInfo">Page 1 of 1</span>
-                    <button id="nextPage">Next</button>
+                    <button id="nextPage" type="button">Next</button>
                 </div>
             </section>
-
         </main>
-
     </div>
 
     <script src="js/orders.js"></script>

@@ -10,6 +10,7 @@
 </head>
 
 <body>
+
     <div class="app-shell app-shell--no-sidebar">
         <main class="main">
             <header class="main-header">
@@ -23,7 +24,7 @@
                 <div class="main-header-right">
                     <span class="chip" id="userChip">User: —</span>
 
-                    <!-- زر الـ Logout -->
+                    <!-- Logout -->
                     <a href="#" class="nav-item nav-item-logout" id="logoutBtn">
                         <div class="nav-item-icon"></div>
                         <span>Logout</span>
@@ -64,8 +65,34 @@
                 </div>
             </section>
 
+            <!-- Recent Orders -->
+            <section class="card" style="margin-top: 20px;">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Recent Orders</div>
+                        <div class="card-subtitle">Last 10 imported orders</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Client</th>
+                                <th>Created</th>
+                                <th>Delivery</th>
+                                <th>Lines</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- Import card -->
-            <section class="card">
+            <section class="card" style="margin-top:20px;">
                 <div class="card-header">
                     <div>
                         <div class="card-title">1) Upload export</div>
@@ -118,7 +145,7 @@
             </section>
 
             <!-- Preview card -->
-            <section class="card" id="previewCard" style="display:none;">
+            <section class="card" id="previewCard" style="display:none; margin-top:20px;">
                 <div class="card-header">
                     <div>
                         <div class="card-title">2) Preview & checks</div>
@@ -173,13 +200,29 @@
                 </div>
             </section>
 
-            <!-- All Orders Management -->
-            <!-- All Orders Table (Full Management) -->
+            <!-- All Orders Detailed View -->
             <section class="card" style="margin-top: 20px;">
-                <div class="card-header">
+                <div class="card-header"
+                    style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px;">
                     <div>
                         <div class="card-title">All Orders (Detailed View)</div>
                         <div class="card-subtitle">Complete order management with all details</div>
+                    </div>
+
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="clientSearch" class="input input-sm" style="width:180px;"
+                            placeholder="Search client..." />
+                        <input id="orderNoSearch" class="input input-sm" style="width:160px;"
+                            placeholder="Search order #..." />
+                        <select id="statusFilter" class="input input-sm" style="width:140px;">
+                            <option value="all">All</option>
+                            <option value="Draft">Draft</option>
+                            <option value="Active">Active</option>
+                            <option value="Paused">Paused</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                        <button class="btn btn-ghost btn-sm" id="refreshOrdersBtn" type="button">Refresh</button>
                     </div>
                 </div>
 
@@ -189,7 +232,7 @@
                             <tr>
                                 <th>Order #</th>
                                 <th>Client</th>
-                                <th>P&F</th>
+                                <th>PRF</th>
                                 <th>Created Date</th>
                                 <th>Delivery Date</th>
                                 <th>Lines</th>
@@ -198,32 +241,31 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="allOrdersBody">
-                            <!-- All orders will be loaded here -->
-                        </tbody>
+                        <tbody id="allOrdersBody"></tbody>
                     </table>
                 </div>
 
-                <!-- Pagination for all orders -->
                 <div
                     style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding:12px; border-top:1px solid #e5e7eb;">
                     <div style="font-size:0.85rem; color:#6b7280;">
                         Showing <span id="allOrdersFrom">0</span>-<span id="allOrdersTo">0</span> of <span
                             id="allOrdersTotal">0</span> orders
                     </div>
-                    <div style="display:flex; gap:8px;">
+
+                    <div style="display:flex; gap:8px; align-items:center;">
                         <button class="btn btn-ghost btn-sm" id="allOrdersPrevBtn" disabled>‹ Previous</button>
                         <div style="display:flex; align-items:center; gap:4px;">
                             <span id="allOrdersCurrentPage">1</span> of <span id="allOrdersTotalPages">1</span>
                         </div>
                         <button class="btn btn-ghost btn-sm" id="allOrdersNextBtn" disabled>Next ›</button>
                     </div>
+
                     <div class="form-group" style="margin:0;">
-                        <select id="allOrdersPageSize" class="input input-sm" style="width:100px;">
-                            <option value="10">10 per page</option>
-                            <option value="25">25 per page</option>
-                            <option value="50">50 per page</option>
-                            <option value="100">100 per page</option>
+                        <select id="allOrdersPageSize" class="input input-sm" style="width:120px;">
+                            <option value="10">10 / page</option>
+                            <option value="25">25 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
                         </select>
                     </div>
                 </div>
@@ -231,48 +273,22 @@
 
             <!-- Order Details Modal -->
             <div id="orderDetailsModal" class="modal" style="display:none;">
-                <div class="modal-content" style="max-width:800px;">
+                <div class="modal-content" style="max-width:900px;">
                     <div class="modal-header">
                         <h3>Order Details - <span id="modalOrderNo"></span></h3>
-                        <button class="modal-close" onclick="closeOrderModal()">×</button>
+                        <button class="modal-close" id="modalCloseBtn">×</button>
                     </div>
                     <div class="modal-body">
                         <div id="orderDetailsContent"></div>
                     </div>
                 </div>
             </div>
+
         </main>
     </div>
 
-    <!-- في نهاية import-orders.html -->
     <script src="js/auth.js"></script>
     <script src="js/import-orders.js"></script>
-
-    <script>
-        // التحقق من تسجيل الدخول بعد تحميل السكربتات
-        document.addEventListener('DOMContentLoaded', function () {
-            // الانتظار قليلاً لتحميل auth.js
-            setTimeout(() => {
-                if (typeof window.isAuthenticated !== 'function') {
-                    console.error('auth.js not loaded properly');
-                    window.location.replace("index.html");
-                    return;
-                }
-
-                if (!window.isAuthenticated()) {
-                    window.location.replace("index.html");
-                    return;
-                }
-
-                const user = window.getCurrentUser ? window.getCurrentUser() : null;
-                const currentPage = window.location.pathname.split('/').pop();
-
-                if (user && user.homePage && user.homePage !== currentPage) {
-                    window.location.replace(user.homePage);
-                }
-            }, 100);
-        });
-    </script>
 
 </body>
 

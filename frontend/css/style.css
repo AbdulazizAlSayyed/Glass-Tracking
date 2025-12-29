@@ -896,3 +896,176 @@ body {
 .main-header .nav-item-logout {
   margin-top: 0;
 }
+/* =========================
+   Filters (Orders page)
+========================= */
+.filters-section {
+  background: var(--bg-card);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  box-shadow: var(--shadow-soft);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.filter label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.filter input,
+.filter select {
+  width: 200px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  outline: none;
+  background: #fff;
+}
+
+.filter input:focus,
+.filter select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.filter .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+
+/* =========================
+   Buttons (small polish)
+========================= */
+.btn {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+.btn:active {
+  transform: translateY(0);
+  opacity: 0.95;
+}
+
+/* =========================
+   Order Details layout
+========================= */
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.details-title {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.details-sub {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.details-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.info-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.info-key {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.info-val {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #f3f4f6;
+  color: #374151;
+}
+.pill.blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.pill.green {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+.pill.red {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.pill.gray {
+  background: #f3f4f6;
+  color: #4b5563;
+  border-color: #e5e7eb;
+}
+
+.table td .muted {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.empty-row td {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 18px 10px;
+}

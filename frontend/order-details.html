@@ -3,111 +3,179 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Glass Tracking – Order Details</title>
     <link rel="stylesheet" href="css/style.css" />
+
+    <!-- ✅ single auth source -->
+    <script src="js/auth.js"></script>
 </head>
 
 <body>
-
-    <div class="app-shell">
-
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon"></div>
-                <span>Glass Tracking</span>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="manager-dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Dashboard</span>
-                </a>
-
-                <a href="orders.html" class="nav-item active">
-                    <div class="nav-item-icon"></div><span>Orders</span>
-                </a>
-
-                <a href="activation.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Activation</span>
-                </a>
-
-                <a href="live-tracking.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Live Tracking</span>
-                </a>
-            </nav>
-        </aside>
-
+    <div class="app-shell app-shell--no-sidebar">
         <main class="main">
 
-            <!-- Header -->
-            <header class="header">
-                <h1>Order Details</h1>
-                <button onclick="window.location.href='orders.html'" class="btn">← Back</button>
-            </header>
-
-            <!-- Order Info -->
             <section class="card">
-                <h2>Order Information</h2>
+                <div class="details-header">
+                    <div>
+                        <div class="details-title" id="pageTitle">Order Details</div>
+                        <div class="details-sub" id="pageSub">View lines, pieces, and status</div>
+                    </div>
 
-                <div class="grid">
-                    <div><strong>Order No:</strong> <span id="orderNo">—</span></div>
-                    <div><strong>Client:</strong> <span id="client">—</span></div>
-                    <div><strong>PRF:</strong> <span id="prf">—</span></div>
-                    <div><strong>Delivery Date:</strong> <span id="deliveryDate">—</span></div>
-                    <div><strong>Status:</strong> <span id="status">—</span></div>
-                    <div><strong>Created At:</strong> <span id="createdAt">—</span></div>
+                    <div class="details-actions">
+                        <span class="chip" id="userChip">User: --</span>
+                        <span class="chip" id="chipFactory">Factory: Tripoli</span>
+                        <button class="btn btn-ghost" type="button" onclick="history.back()">← Back</button>
+                        <button id="logoutBtn" class="btn btn-ghost" type="button">Logout</button>
+                    </div>
                 </div>
             </section>
 
-            <!-- Order Lines -->
-            <section class="card">
-                <h2>Order Lines</h2>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Line Code</th>
-                            <th>Qty</th>
-                            <th>Size</th>
-                            <th>Glass Type</th>
-                            <th>Notes</th>
-                        </tr>
-                    </thead>
+            <div class="details-grid">
+                <!-- Info -->
+                <section class="card">
+                    <div
+                        style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <h2 style="font-size:0.95rem; font-weight:650;">Info</h2>
+                        <span class="pill gray" id="statusPill">Status</span>
+                    </div>
 
-                    <tbody id="linesTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align:center">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <div class="info-key">Order No</div>
+                            <div class="info-val" id="orderNo">—</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-key">Client</div>
+                            <div class="info-val" id="client">—</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-key">PRF</div>
+                            <div class="info-val" id="prf">—</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-key">Delivery</div>
+                            <div class="info-val" id="deliveryDate">—</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-key">Created</div>
+                            <div class="info-val" id="createdAt">—</div>
+                        </div>
+                    </div>
+                </section>
 
-            <!-- Pieces -->
-            <section class="card">
-                <h2>Glass Pieces</h2>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Piece Code</th>
-                            <th>Status</th>
-                            <th>Station</th>
-                            <th>Broken Reason</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
+                <!-- Lines + Pieces -->
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- Lines -->
+                    <section class="card">
+                        <div class="card-header" style="gap:12px; flex-wrap:wrap;">
+                            <div>
+                                <div class="card-title">Lines</div>
+                                <div class="card-subtitle">Order line items</div>
+                            </div>
 
-                    <tbody id="piecesTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align:center">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
+                            <!-- ✅ Lines Filters -->
+                            <div class="filters-row" style="margin-left:auto; justify-content:flex-end;">
+                                <div class="filter">
+                                    <label>Search</label>
+                                    <input id="lineSearch" type="text" placeholder="Line code, glass type..." />
+                                </div>
+
+                                <div class="filter">
+                                    <label>Glass Type</label>
+                                    <select id="lineGlassType">
+                                        <option value="all">All</option>
+                                    </select>
+                                </div>
+
+                                <button id="resetLinesBtn" class="btn btn-ghost" type="button">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Line Code</th>
+                                        <th>Qty</th>
+                                        <th>Size</th>
+                                        <th>Glass Type</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="linesTableBody">
+                                    <tr class="empty-row">
+                                        <td colspan="5">Loading…</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Pieces -->
+                    <section class="card">
+                        <div class="card-header" style="gap:12px; flex-wrap:wrap;">
+                            <div>
+                                <div class="card-title">Pieces</div>
+                                <div class="card-subtitle">Tracking pieces (if enabled)</div>
+                            </div>
+
+                            <!-- ✅ Pieces Filters -->
+                            <div class="filters-row" style="margin-left:auto; justify-content:flex-end;">
+                                <div class="filter">
+                                    <label>Search</label>
+                                    <input id="pieceSearch" type="text" placeholder="Piece code..." />
+                                </div>
+
+                                <div class="filter">
+                                    <label>Status</label>
+                                    <select id="pieceStatus">
+                                        <option value="all">All</option>
+                                        <option value="pending">pending</option>
+                                        <option value="in_progress">in_progress</option>
+                                        <option value="completed">completed</option>
+                                        <option value="broken">broken</option>
+                                    </select>
+                                </div>
+
+                                <div class="filter">
+                                    <label>Station</label>
+                                    <select id="pieceStation">
+                                        <option value="all">All</option>
+                                    </select>
+                                </div>
+
+                                <button id="resetPiecesBtn" class="btn btn-ghost" type="button">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Piece</th>
+                                        <th>Status</th>
+                                        <th>Station</th>
+                                        <th>Broken Notes</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="piecesTableBody">
+                                    <tr class="empty-row">
+                                        <td colspan="5">Loading…</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
 
         </main>
-
     </div>
 
-    <script src="js/orderDetails.js"></script>
+    <script src="js/order-details.js"></script>
 </body>
 
 </html>
