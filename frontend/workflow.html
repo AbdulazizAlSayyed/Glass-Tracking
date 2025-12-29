@@ -82,7 +82,11 @@
             color: #b91c1c;
         }
     </style>
+
+    <!-- Auth guard (نفس الفكرة من باقي الصفحات) -->
+
 </head>
+<script src="js/auth.js"></script>
 
 <body>
     <div class="app-shell">
@@ -157,7 +161,7 @@
                     </div>
                 </div>
                 <div class="main-header-right">
-                    <span class="pill" id="saveStatus">Not saved</span>
+                    <span class="pill" id="saveStatus">Loaded</span>
                     <button class="btn btn-primary" id="saveBtn">Save</button>
                 </div>
             </header>
@@ -204,31 +208,20 @@
                 <div class="list" id="reasonsList"></div>
 
                 <div class="muted" style="margin-top:10px;">
-                    ملاحظة: هالصفحة Front فقط وبتحفظ بـ LocalStorage. بعدين منربطها بالـ DB وصلاحيات Admin/Manager.
+                    هالإعدادات محفوظة بالـ Database وبتستعملها صفحات الـ Live Tracking / Quality / Reports.
                 </div>
             </section>
         </main>
     </div>
 
     <script>
-        const WORKFLOW_KEY = "gt_workflow_v2";
-
-        const DEFAULT_WORKFLOW = {
-            stages: ["Cutting", "Grinding", "Washing", "Furnace", "Double", "Lamination", "Packing", "Delivery"],
-            brokenReasons: ["Fell on floor", "Scratch", "Edge crack", "Wrong handling", "Machine issue"]
-        };
-
-        function loadWorkflow() {
-            const raw = localStorage.getItem(WORKFLOW_KEY);
-            if (!raw) {
-                localStorage.setItem(WORKFLOW_KEY, JSON.stringify(DEFAULT_WORKFLOW));
-                return structuredClone(DEFAULT_WORKFLOW);
-            }
-            try { return JSON.parse(raw); } catch { return structuredClone(DEFAULT_WORKFLOW); }
-        }
-
-        function saveWorkflow(data) {
-            localStorage.setItem(WORKFLOW_KEY, JSON.stringify(data));
+        // ====== Auth headers ======
+        const token = localStorage.getItem("token");
+        function authHeaders() {
+            return {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json",
+            };
         }
 
         function safeText(s) {
@@ -246,7 +239,8 @@
         const addReasonBtn = document.getElementById("addReasonBtn");
         const reasonsList = document.getElementById("reasonsList");
 
-        let workflow = loadWorkflow();
+        let STAGES = [];        // [{id,name,isActive}]
+        let BROKEN_REASONS = []; // [{id,label,isActive}]
         let dirty = false;
 
         function markDirty() {
@@ -259,15 +253,22 @@
             saveStatus.textContent = "Saved ✅";
         }
 
+        // ====== Render stages ======
         function renderStages() {
             stagesList.innerHTML = "";
 
-            workflow.stages.forEach((stage, idx) => {
+            if (!STAGES.length) {
+                stagesList.innerHTML =
+                    '<div class="list-item"><div class="muted">No stages defined.</div></div>';
+                return;
+            }
+
+            STAGES.forEach((st, idx) => {
                 const div = document.createElement("div");
                 div.className = "list-item";
                 div.innerHTML = `
           <div class="item-left">
-            <div class="item-title">${safeText(stage)}</div>
+            <div class="item-title">${safeText(st.name)}</div>
             <div class="item-sub">Position: ${idx + 1}</div>
           </div>
           <div class="item-actions">
@@ -278,21 +279,24 @@
         `;
                 stagesList.appendChild(div);
             });
-
-            if (!workflow.stages.length) {
-                stagesList.innerHTML = `<div class="list-item"><div class="muted">No stages defined.</div></div>`;
-            }
         }
 
+        // ====== Render reasons ======
         function renderReasons() {
             reasonsList.innerHTML = "";
 
-            workflow.brokenReasons.forEach((reason, idx) => {
+            if (!BROKEN_REASONS.length) {
+                reasonsList.innerHTML =
+                    '<div class="list-item"><div class="muted">No reasons defined.</div></div>';
+                return;
+            }
+
+            BROKEN_REASONS.forEach((r, idx) => {
                 const div = document.createElement("div");
                 div.className = "list-item";
                 div.innerHTML = `
           <div class="item-left">
-            <div class="item-title">${safeText(reason)}</div>
+            <div class="item-title">${safeText(r.label)}</div>
             <div class="item-sub">Used in Broken Report</div>
           </div>
           <div class="item-actions">
@@ -301,104 +305,184 @@
         `;
                 reasonsList.appendChild(div);
             });
+        }
 
-            if (!workflow.brokenReasons.length) {
-                reasonsList.innerHTML = `<div class="list-item"><div class="muted">No reasons defined.</div></div>`;
+        // ====== Load from server ======
+        async function loadWorkflowFromServer() {
+            try {
+                const res = await fetch("/api/workflow", {
+                    method: "GET",
+                    headers: authHeaders(),
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.ok) {
+                    console.error("GET /api/workflow error:", data);
+                    saveStatus.textContent = "Error loading";
+                    return;
+                }
+
+                STAGES = (data.stages || []).map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    isActive: s.isActive !== false,
+                }));
+
+                BROKEN_REASONS = (data.brokenReasons || []).map((r) => ({
+                    id: r.id,
+                    label: r.label,
+                    isActive: r.isActive !== false,
+                }));
+
+                renderStages();
+                renderReasons();
+                markSaved();
+            } catch (err) {
+                console.error("loadWorkflowFromServer error:", err);
+                saveStatus.textContent = "Error loading";
             }
         }
 
-        // Add stage
+        // ====== Add stage ======
         addStageBtn.addEventListener("click", () => {
             const name = (newStageInput.value || "").trim();
             if (!name) return;
 
-            const exists = workflow.stages.some(s => s.toLowerCase() === name.toLowerCase());
-            if (exists) { alert("Stage already exists"); return; }
+            const exists = STAGES.some(
+                (s) => (s.name || "").toLowerCase() === name.toLowerCase()
+            );
+            if (exists) {
+                alert("Stage already exists");
+                return;
+            }
 
-            workflow.stages.push(name);
+            STAGES.push({ id: null, name, isActive: true });
             newStageInput.value = "";
             markDirty();
             renderStages();
         });
 
-        // Stage actions
+        // ====== Stage actions (up/down/remove) ======
         stagesList.addEventListener("click", (e) => {
             const btn = e.target.closest("button[data-stage-act]");
             if (!btn) return;
-
             const act = btn.dataset.stageAct;
             const idx = Number(btn.dataset.idx);
             if (Number.isNaN(idx)) return;
 
             if (act === "up" && idx > 0) {
-                [workflow.stages[idx - 1], workflow.stages[idx]] = [workflow.stages[idx], workflow.stages[idx - 1]];
-                markDirty(); renderStages();
+                [STAGES[idx - 1], STAGES[idx]] = [STAGES[idx], STAGES[idx - 1]];
+                markDirty();
+                renderStages();
             }
 
-            if (act === "down" && idx < workflow.stages.length - 1) {
-                [workflow.stages[idx + 1], workflow.stages[idx]] = [workflow.stages[idx], workflow.stages[idx + 1]];
-                markDirty(); renderStages();
+            if (act === "down" && idx < STAGES.length - 1) {
+                [STAGES[idx + 1], STAGES[idx]] = [STAGES[idx], STAGES[idx + 1]];
+                markDirty();
+                renderStages();
             }
 
             if (act === "remove") {
-                const stage = workflow.stages[idx];
-                const ok = confirm(`Remove stage "${stage}" ?`);
+                const st = STAGES[idx];
+                const ok = confirm(`Remove stage "${st.name}" ?`);
                 if (!ok) return;
-
-                workflow.stages.splice(idx, 1);
+                STAGES.splice(idx, 1);
                 markDirty();
                 renderStages();
             }
         });
 
-        // Add reason
+        // ====== Add reason ======
         addReasonBtn.addEventListener("click", () => {
             const name = (newReasonInput.value || "").trim();
             if (!name) return;
 
-            const exists = workflow.brokenReasons.some(r => r.toLowerCase() === name.toLowerCase());
-            if (exists) { alert("Reason already exists"); return; }
+            const exists = BROKEN_REASONS.some(
+                (r) => (r.label || "").toLowerCase() === name.toLowerCase()
+            );
+            if (exists) {
+                alert("Reason already exists");
+                return;
+            }
 
-            workflow.brokenReasons.push(name);
+            BROKEN_REASONS.push({ id: null, label: name, isActive: true });
             newReasonInput.value = "";
             markDirty();
             renderReasons();
         });
 
-        // Remove reason
+        // ====== Remove reason ======
         reasonsList.addEventListener("click", (e) => {
             const btn = e.target.closest("button[data-reason-remove]");
             if (!btn) return;
-
             const idx = Number(btn.dataset.reasonRemove);
-            const ok = confirm(`Remove reason "${workflow.brokenReasons[idx]}" ?`);
+            if (Number.isNaN(idx)) return;
+
+            const r = BROKEN_REASONS[idx];
+            const ok = confirm(`Remove reason "${r.label}" ?`);
             if (!ok) return;
 
-            workflow.brokenReasons.splice(idx, 1);
+            BROKEN_REASONS.splice(idx, 1);
             markDirty();
             renderReasons();
         });
 
-        // Save
-        saveBtn.addEventListener("click", () => {
-            if (!workflow.stages.length) {
-                alert("You must have at least 1 stage.");
-                return;
+        // ====== Save to server ======
+        saveBtn.addEventListener("click", async () => {
+            try {
+                if (!STAGES.length) {
+                    alert("You must have at least 1 stage.");
+                    return;
+                }
+
+                const payload = {
+                    stages: STAGES.map((s) => ({
+                        id: s.id || null,
+                        name: s.name,
+                        isActive: s.isActive !== false,
+                    })),
+                    brokenReasons: BROKEN_REASONS.map((r) => ({
+                        id: r.id || null,
+                        label: r.label,
+                        isActive: r.isActive !== false,
+                    })),
+                };
+
+                saveStatus.textContent = "Saving...";
+                const res = await fetch("/api/workflow", {
+                    method: "POST",
+                    headers: authHeaders(),
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.ok) {
+                    console.error("POST /api/workflow error:", data);
+                    saveStatus.textContent = "Save error";
+                    alert("Error while saving workflow");
+                    return;
+                }
+
+                markSaved();
+                // نرجع نعمل load من الـ DB عشان نضمن IDs صحيحة
+                await loadWorkflowFromServer();
+            } catch (err) {
+                console.error("saveWorkflow error:", err);
+                saveStatus.textContent = "Save error";
+                alert("Internal server error while saving");
             }
-            saveWorkflow(workflow);
-            markSaved();
         });
 
+        // ====== Warn لو في تعديلات وما تحفظت ======
         window.addEventListener("beforeunload", (e) => {
             if (!dirty) return;
             e.preventDefault();
             e.returnValue = "";
         });
 
-        // Init
-        renderStages();
-        renderReasons();
-        markSaved();
+        // ====== Init ======
+        loadWorkflowFromServer();
     </script>
 </body>
 

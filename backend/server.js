@@ -16,7 +16,7 @@ const liveTrackingRoutes = require("./routes/liveTrackingRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const deliveryRoutes = require("./routes/delivery");
 const usersRoutes = require("./routes/users");
-
+const workflowRoutes = require("./routes/workflowRoutes");
 // ... middlewares زي json, cors, الخ
 
 const app = express();
@@ -65,6 +65,7 @@ app.use("/api/live-tracking", liveTrackingRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/workflow", workflowRoutes);
 
 // frontend pages fallback
 app.get("/:file", (req, res, next) => {
