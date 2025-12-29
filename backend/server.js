@@ -12,6 +12,10 @@ const intakeRoutes = require("./routes/intake");
 const { authRequired } = require("./middleware/auth");
 const managerRoutes = require("./routes/manager");
 const activationRoutes = require("./routes/activation");
+const liveTrackingRoutes = require("./routes/liveTrackingRoutes");
+const reportsRoutes = require("./routes/reportsRoutes");
+
+// ... middlewares زي json, cors, الخ
 
 const app = express();
 
@@ -55,6 +59,9 @@ app.use("/api/pieces", authRequired, piecesRoutes);
 app.use("/api/stations", authRequired, stationsRoutes);
 app.use("/api/manager", authRequired, managerRoutes);
 app.use("/api/activation", authRequired, activationRoutes);
+app.use("/api/live-tracking", liveTrackingRoutes);
+app.use("/api/reports", reportsRoutes);
+
 // frontend pages fallback
 app.get("/:file", (req, res, next) => {
   const allowedPages = [

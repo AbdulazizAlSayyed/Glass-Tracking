@@ -7,6 +7,44 @@
     <title>Glass Tracking – Delivery Out</title>
     <link rel="stylesheet" href="css/style.css" />
 </head>
+<script>
+    (() => {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const authToken = localStorage.getItem("token");
+        const params = new URLSearchParams(window.location.search);
+
+        // لو عامل logout
+        if (params.get("logout") === "1") {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.replace("/index.html?logout=1");
+            return;
+        }
+
+        // لو مش داخل أصلاً
+        if (!user || !authToken) {
+            window.location.replace("/index.html?logout=1");
+            return;
+        }
+
+        const current = location.pathname.split("/").pop() || "index.html";
+
+        // ✅ حماية عامّة: مستخدم عنده home_page مختلف ممنوع يفتح هالصفحة
+        if (user.homePage && user.homePage !== current) {
+            window.location.replace("/" + user.homePage);
+            return;
+        }
+
+        // ✅ حماية زيادة: لازم يكون role = 'delivery'
+        if (user.role !== "delivery") {
+            // رجّعو على صفحته الأساسية أو dashboard
+            window.location.replace("/" + (user.homePage || "dashboard.html"));
+            return;
+        }
+
+        // لو كل شي تمام، خلّيه يكمل تحميل الصفحة
+    })();
+</script>
 
 <body>
     <div class="app-shell">
@@ -45,7 +83,7 @@
                     </div>
                 </div>
                 <div class="main-header-right">
-                    <span class="chip">User: Delivery</span>
+                    <span class="chip" id="userChip">User: Delivery</span>
                 </div>
             </header>
 
@@ -301,8 +339,28 @@
             </div>
         </div>
     </div>
+    <script>
+        // تحديث اسم المستخدم / الدور في الـ chip
+        (function () {
+            try {
+                const user = JSON.parse(localStorage.getItem("user") || "null");
+                if (!user) return;
+                const chip = document.getElementById("userChip");
+                if (!chip) return;
 
-    <script src="js/delivery.js"></script>
+                const name = user.full_name || user.username || "User";
+                const role = user.role || "delivery";
+                chip.textContent = `${name} – ${role}`;
+            } catch (e) {
+                console.error("userChip error:", e);
+            }
+        })();
+    </script>
+</body>
+
+</html>
+
+<script src="js/delivery.js"></script>
 </body>
 
 </html>

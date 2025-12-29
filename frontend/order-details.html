@@ -7,7 +7,7 @@
     <title>Glass Tracking – Order Details</title>
     <link rel="stylesheet" href="css/style.css" />
 
-    <!-- ✅ single auth source -->
+    <!-- Auth -->
     <script src="js/auth.js"></script>
 </head>
 
@@ -15,6 +15,7 @@
     <div class="app-shell app-shell--no-sidebar">
         <main class="main">
 
+            <!-- Header -->
             <section class="card">
                 <div class="details-header">
                     <div>
@@ -32,7 +33,7 @@
             </section>
 
             <div class="details-grid">
-                <!-- Info -->
+                <!-- Info card -->
                 <section class="card">
                     <div
                         style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -64,8 +65,9 @@
                     </div>
                 </section>
 
-                <!-- Lines + Pieces -->
+                <!-- Lines + Pieces column -->
                 <div style="display:flex; flex-direction:column; gap:16px;">
+
                     <!-- Lines -->
                     <section class="card">
                         <div class="card-header" style="gap:12px; flex-wrap:wrap;">
@@ -74,21 +76,24 @@
                                 <div class="card-subtitle">Order line items</div>
                             </div>
 
-                            <!-- ✅ Lines Filters -->
+                            <!-- ✅ Lines filters -->
                             <div class="filters-row" style="margin-left:auto; justify-content:flex-end;">
                                 <div class="filter">
-                                    <label>Search</label>
-                                    <input id="lineSearch" type="text" placeholder="Line code, glass type..." />
+                                    <label class="filter-label">Search</label>
+                                    <input id="lineSearch" class="input" placeholder="Line code / notes..." />
                                 </div>
 
                                 <div class="filter">
-                                    <label>Glass Type</label>
-                                    <select id="lineGlassType">
+                                    <label class="filter-label">Glass type</label>
+                                    <select id="lineGlassType" class="select">
                                         <option value="all">All</option>
+                                        <!-- JS will fill unique glass types -->
                                     </select>
                                 </div>
 
-                                <button id="resetLinesBtn" class="btn btn-ghost" type="button">Reset</button>
+                                <div class="filter filter-actions">
+                                    <button id="resetLinesBtn" class="btn btn-ghost" type="button">Reset</button>
+                                </div>
                             </div>
                         </div>
 
@@ -120,7 +125,7 @@
                                 <div class="card-subtitle">Tracking pieces (if enabled)</div>
                             </div>
 
-                            <!-- ✅ Pieces Filters -->
+                            <!-- ✅ Pieces filters -->
                             <div class="filters-row" style="margin-left:auto; justify-content:flex-end;">
                                 <div class="filter">
                                     <label>Search</label>
@@ -132,7 +137,7 @@
                                     <select id="pieceStatus">
                                         <option value="all">All</option>
                                         <option value="pending">pending</option>
-                                        <option value="in_progress">in_progress</option>
+                                        <option value="active">active</option>
                                         <option value="completed">completed</option>
                                         <option value="broken">broken</option>
                                     </select>
@@ -168,7 +173,6 @@
                             </table>
                         </div>
                     </section>
-
                 </div>
             </div>
 

@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Reports</title>
     <link rel="stylesheet" href="css/style.css" />
+    <!-- ✅ نفس auth تبع باقي الصفحات -->
+    <script src="js/auth.js"></script>
 
     <style>
         /* ===== Extra UI helpers (works with your style.css) ===== */
@@ -606,27 +608,10 @@
 
     <script>
         /* =========================================================
-          MOCK DATA (Front-end) — later you replace with backend API
+          HELPERS
         ========================================================== */
 
-        const STATIONS = ["Cutting", "Grinding", "Washing", "Furnace", "Double", "Lamination", "Packing", "Delivery"];
-        const CUSTOMERS = ["ALEXCO", "Tempo", "Project Alpha", "Showroom", "Maison", "City Mall", "Office Tower"];
-        const BREAK_REASONS = ["Fell on floor", "Scratch", "Wrong handling", "Machine issue", "Edge crack", "Transport inside"];
-        const WORKERS = [
-            { name: "Ali", station: "Cutting" },
-            { name: "Hadi", station: "Cutting" },
-            { name: "Omar", station: "Grinding" },
-            { name: "Mahmoud", station: "Grinding" },
-            { name: "Khaled", station: "Washing" },
-            { name: "Rami", station: "Furnace" },
-            { name: "Youssef", station: "Double" },
-            { name: "Samer", station: "Lamination" },
-            { name: "Nabil", station: "Packing" },
-            { name: "Fadi", station: "Delivery" },
-        ];
-
-        // Seeded RNG for stable demo
-        function mulberry32(a) {
+        function mulberry32(a) { // ما عاد نستخدمه، بس بخليه لو حبّيت تستعمله لاحقاً
             return function () {
                 let t = a += 0x6D2B79F5;
                 t = Math.imul(t ^ t >>> 15, t | 1);
@@ -638,7 +623,8 @@
         function pad2(n) { return String(n).padStart(2, "0"); }
 
         function toISODate(d) {
-            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+            const date = new Date(d);
+            return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
         }
 
         function addDays(date, days) {
@@ -654,102 +640,20 @@
             return d >= f && d <= t;
         }
 
-        // Generate demo days (last 30 days)
         const TODAY = new Date();
         const START_30 = addDays(TODAY, -29);
 
-        const rng = mulberry32(12345);
+        /* =========================================================
+          GLOBAL DATA (coming from backend)
+        ========================================================== */
 
-        // Orders list
-        const ORDERS = Array.from({ length: 40 }).map((_, i) => {
-            const created = addDays(START_30, Math.floor(rng() * 30));
-            const due = addDays(created, 3 + Math.floor(rng() * 10));
-            const delivered = rng() < 0.65 ? addDays(due, Math.floor((rng() - 0.5) * 6)) : null; // some not delivered
-            const deliveryType = delivered ? (rng() < 0.35 ? "Partial" : "Full") : "-";
-
-            return {
-                id: `ORD-${1001 + i}`,
-                customer: CUSTOMERS[Math.floor(rng() * CUSTOMERS.length)],
-                createdDate: toISODate(created),
-                dueDate: toISODate(due),
-                deliveredDate: delivered ? toISODate(delivered) : null,
-                deliveryType,
-            };
-        });
-
-        // Productivity scans (completed pieces) per day/station/worker
-        const PROD_SCANS = [];
-        for (let day = 0; day < 30; day++) {
-            const d = addDays(START_30, day);
-            const date = toISODate(d);
-
-            STATIONS.forEach(st => {
-                if (st === "Delivery") return; // productivity focuses production stations
-                const base = 20 + Math.floor(rng() * 25);
-                const completed = Math.max(0, base + Math.floor((rng() - 0.5) * 12));
-
-                // split across 1-2 workers for that station
-                const workers = WORKERS.filter(w => w.station === st);
-                if (!workers.length) return;
-
-                const w1 = workers[Math.floor(rng() * workers.length)];
-                const w2 = workers[Math.floor(rng() * workers.length)];
-
-                const part1 = Math.floor(completed * (0.45 + rng() * 0.35));
-                const part2 = completed - part1;
-
-                PROD_SCANS.push({ date, station: st, worker: w1.name, completed: part1 });
-                if (w2.name !== w1.name) PROD_SCANS.push({ date, station: st, worker: w2.name, completed: part2 });
-            });
-        }
-
-        // Broken events
-        const BROKEN_EVENTS = [];
-        for (let i = 0; i < 120; i++) {
-            const d = addDays(START_30, Math.floor(rng() * 30));
-            const date = toISODate(d);
-
-            const station = STATIONS[Math.floor(rng() * (STATIONS.length - 1))]; // exclude Delivery
-            const workerCandidates = WORKERS.filter(w => w.station === station);
-            const worker = workerCandidates.length ? workerCandidates[Math.floor(rng() * workerCandidates.length)].name : "Unknown";
-
-            const order = ORDERS[Math.floor(rng() * ORDERS.length)];
-
-            BROKEN_EVENTS.push({
-                date,
-                orderId: order.id,
-                customer: order.customer,
-                pieceId: `${order.id}-${station}-${Math.floor(rng() * 50 + 1)}`,
-                station,
-                worker,
-                reason: BREAK_REASONS[Math.floor(rng() * BREAK_REASONS.length)]
-            });
-        }
-
-        // Lead times per station (avg/max minutes) per day (demo)
-        const LEAD_SAMPLES = [];
-        for (let day = 0; day < 30; day++) {
-            const date = toISODate(addDays(START_30, day));
-            STATIONS.forEach(st => {
-                if (st === "Delivery") return;
-                const avg = Math.floor(12 + rng() * 55); // minutes
-                const max = avg + Math.floor(10 + rng() * 40);
-                LEAD_SAMPLES.push({ date, station: st, avgMin: avg, maxMin: max });
-            });
-        }
-
-        // WIP snapshot per day (waiting/inProgress)
-        const WIP_SNAPSHOTS = [];
-        for (let day = 0; day < 30; day++) {
-            const date = toISODate(addDays(START_30, day));
-            STATIONS.forEach(st => {
-                if (st === "Delivery") return;
-                const waiting = Math.floor(rng() * 20);
-                const inProg = Math.floor(5 + rng() * 15);
-                WIP_SNAPSHOTS.push({ date, stage: st, waiting, inProgress: inProg });
-            });
-        }
-
+        let STATIONS = [];
+        let CUSTOMERS = [];
+        let ORDERS = [];
+        let PROD_SCANS = [];
+        let BROKEN_EVENTS = [];
+        let LEAD_SAMPLES = [];
+        let WIP_SNAPSHOTS = [];
 
         /* =========================================================
           FILTERS UI
@@ -761,28 +665,12 @@
         const customerFilter = document.getElementById("customerFilter");
         const stationFilter = document.getElementById("stationFilter");
         const activePill = document.getElementById("activePill");
-
         const applyBtn = document.getElementById("applyBtn");
         const resetBtn = document.getElementById("resetBtn");
         const exportExcelBtn = document.getElementById("exportExcelBtn");
         const exportPdfBtn = document.getElementById("exportPdfBtn");
 
-        // Fill dropdowns
-        CUSTOMERS.forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c;
-            opt.textContent = c;
-            customerFilter.appendChild(opt);
-        });
-
-        STATIONS.forEach(s => {
-            const opt = document.createElement("option");
-            opt.value = s;
-            opt.textContent = s;
-            stationFilter.appendChild(opt);
-        });
-
-        // default range: last 7
+        // date ranges
         function setRangeLast7() {
             const end = new Date();
             const start = addDays(end, -6);
@@ -816,13 +704,12 @@
                 if (activeRange === "last7") setRangeLast7();
                 if (activeRange === "today") setRangeToday();
                 if (activeRange === "thisMonth") setRangeThisMonth();
-                // custom: user selects manually
 
                 renderAll();
             });
         });
 
-        // initial
+        // default
         setRangeLast7();
 
         resetBtn.addEventListener("click", () => {
@@ -837,8 +724,6 @@
         });
 
         applyBtn.addEventListener("click", () => renderAll());
-
-        // quick live
         orderFilter.addEventListener("input", () => renderAll());
         customerFilter.addEventListener("change", () => renderAll());
         stationFilter.addEventListener("change", () => renderAll());
@@ -864,7 +749,6 @@
             activePill.textContent = `Active filters: ${parts.join(" • ")}`;
             document.getElementById("printRangeLine").textContent = `Range: ${parts.join(" • ")}`;
         }
-
 
         /* =========================================================
           HELPERS (group + aggregate)
@@ -899,9 +783,8 @@
             return out;
         }
 
-
         /* =========================================================
-          CHARTS (simple canvas - no libs)
+          CANVAS CHARTS (بدون مكتبة خارجية)
         ========================================================== */
 
         function clearCanvas(ctx) {
@@ -927,11 +810,9 @@
 
             clearCanvas(ctx);
 
-            // padding
             const P = 28;
             const x0 = P, y0 = h - P, x1 = w - P, y1 = P;
 
-            // axis
             ctx.strokeStyle = "rgba(148,163,184,0.7)";
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -943,7 +824,6 @@
             const maxV = Math.max(1, ...values);
             const minV = 0;
 
-            // grid
             const gridLines = 4;
             ctx.fillStyle = "rgba(100,116,139,0.9)";
             ctx.font = "12px Arial";
@@ -960,7 +840,6 @@
 
             if (!values.length) return;
 
-            // line
             ctx.strokeStyle = "rgba(37,99,235,0.95)";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -973,7 +852,6 @@
             });
             ctx.stroke();
 
-            // dots
             ctx.fillStyle = "rgba(37,99,235,1)";
             values.forEach((v, i) => {
                 const x = x0 + (i / Math.max(1, values.length - 1)) * (x1 - x0);
@@ -983,7 +861,6 @@
                 ctx.fill();
             });
 
-            // bottom labels (sparse)
             ctx.fillStyle = "rgba(100,116,139,0.9)";
             const step = Math.ceil(labels.length / 6);
             labels.forEach((lab, i) => {
@@ -1005,7 +882,6 @@
             const P = 28;
             const x0 = P, y0 = h - P, x1 = w - P, y1 = P;
 
-            // axis
             ctx.strokeStyle = "rgba(148,163,184,0.7)";
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -1015,13 +891,11 @@
             ctx.stroke();
 
             const maxV = Math.max(1, ...values);
-
             const n = labels.length || 1;
-            const barW = (x1 - x0) / n * 0.68;
-            const gap = (x1 - x0) / n * 0.32;
+            const barW = ((x1 - x0) / n) * 0.68;
+            const gap = ((x1 - x0) / n) * 0.32;
 
             ctx.font = "12px Arial";
-            ctx.fillStyle = "rgba(100,116,139,0.9)";
 
             labels.forEach((lab, i) => {
                 const v = values[i] || 0;
@@ -1037,56 +911,56 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // value label
                 ctx.fillStyle = "rgba(17,24,39,0.9)";
                 ctx.fillText(String(v), x + 6, y - 6);
 
-                // x label
                 ctx.fillStyle = "rgba(100,116,139,0.9)";
                 ctx.fillText(lab.length > 8 ? lab.slice(0, 8) + "…" : lab, x, h - 8);
             });
         }
 
-
         /* =========================================================
-          RENDER
+          RENDER MAIN
         ========================================================== */
 
         function renderAll() {
+            if (!BROKEN_EVENTS || !PROD_SCANS) return; // لسا ما خلص الـ fetch
+
             const filters = getFilters();
             setActivePillText(filters);
 
-            // filtered broken
+            // Broken
             let broken = BROKEN_EVENTS.filter(e => between(e.date, filters.from, filters.to));
-
-            if (filters.order) broken = broken.filter(e => e.orderId === filters.order);
+            if (filters.order) {
+                broken = broken.filter(e => (e.orderNo || "").toUpperCase() === filters.order);
+            }
             if (filters.customer !== "all") broken = broken.filter(e => e.customer === filters.customer);
             if (filters.station !== "all") broken = broken.filter(e => e.station === filters.station);
 
-            // filtered productivity scans
+            // Productivity
             let prod = PROD_SCANS.filter(e => between(e.date, filters.from, filters.to));
             if (filters.station !== "all") prod = prod.filter(e => e.station === filters.station);
 
-            // lead times
+            // Lead
             let lead = LEAD_SAMPLES.filter(e => between(e.date, filters.from, filters.to));
             if (filters.station !== "all") lead = lead.filter(e => e.station === filters.station);
 
-            // wip
+            // WIP
             let wip = WIP_SNAPSHOTS.filter(e => between(e.date, filters.from, filters.to));
             if (filters.station !== "all") wip = wip.filter(e => e.stage === filters.station);
 
-            // delivery table
+            // Delivery
             let deliveryOrders = ORDERS.filter(o => between(o.createdDate, filters.from, filters.to));
-            if (filters.order) deliveryOrders = deliveryOrders.filter(o => o.id === filters.order);
+            if (filters.order) {
+                deliveryOrders = deliveryOrders.filter(o => (o.orderNo || "").toUpperCase() === filters.order);
+            }
             if (filters.customer !== "all") deliveryOrders = deliveryOrders.filter(o => o.customer === filters.customer);
 
-            // KPI compute
+            // KPIs
             const totalBroken = broken.length;
-            const totalCompleted = prod.reduce((s, x) => s + x.completed, 0);
-
+            const totalCompleted = prod.reduce((s, x) => s + (x.completed || 0), 0);
             const brokenRate = totalCompleted ? Math.round((totalBroken / totalCompleted) * 1000) / 10 : 0;
 
-            // avg lead: compute avg of station avgMin summed (demo)
             const byStationAvg = groupSum(lead, x => x.station, x => x.avgMin);
             const byStationCount = groupCount(lead, x => x.station);
             const stationAvgMin = {};
@@ -1094,12 +968,10 @@
                 const c = (byStationCount.find(x => x.key === r.key)?.value || 1);
                 stationAvgMin[r.key] = r.value / c;
             });
-
             let totalLeadMin = 0;
             Object.values(stationAvgMin).forEach(v => totalLeadMin += v);
             const leadHr = totalLeadMin ? (totalLeadMin / 60).toFixed(1) : "-";
 
-            // on-time delivery
             const delivered = deliveryOrders.filter(o => o.deliveredDate);
             const ontime = delivered.filter(o => new Date(o.deliveredDate) <= new Date(o.dueDate)).length;
             const ontimeRate = delivered.length ? Math.round((ontime / delivered.length) * 100) : 0;
@@ -1115,22 +987,13 @@
             renderProdStationChart(prod);
             renderWipChart(wip);
 
-            // Broken tables
+            // Tables
             renderBrokenTables(broken);
-
-            // Productivity tables
             renderProdTables(filters, prod, broken);
-
-            // Lead time table
             renderLeadTable(filters, lead);
-
-            // Delivery
             renderDeliveryTable(filters, deliveryOrders);
-
-            // WIP
             renderWipTable(filters, wip);
 
-            // Export handlers use CURRENT filtered data
             setupExports(filters, broken, prod, lead, deliveryOrders, wip);
         }
 
@@ -1144,19 +1007,17 @@
         }
 
         function renderProdStationChart(prod) {
-            const sums = groupSum(prod, x => x.station, x => x.completed);
+            const sums = groupSum(prod, x => x.station, x => x.completed || 0);
             const labels = sums.map(x => x.key);
             const values = sums.map(x => Math.round(x.value));
             drawBarChart("prodStationChart", labels, values);
         }
 
         function renderWipChart(wip) {
-            // show last day snapshot in range (or average)
             if (!wip.length) {
                 drawBarChart("wipChart", ["-"], [0]);
                 return;
             }
-            // use latest date within filtered data
             const latestDate = wip.reduce((m, x) => x.date > m ? x.date : m, wip[0].date);
             const snapshot = wip.filter(x => x.date === latestDate);
 
@@ -1172,23 +1033,25 @@
             const brokenByReasonTbody = document.getElementById("brokenByReasonTbody");
             const brokenByWorkerTbody = document.getElementById("brokenByWorkerTbody");
 
-            // detailed list (latest first)
             brokenEventsTbody.innerHTML = "";
             const rows = [...broken].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 50);
             rows.forEach(e => {
                 const tr = document.createElement("tr");
                 tr.classList.add("clickable");
+                const orderLabel = e.orderNo || e.orderId || "-";
                 tr.innerHTML = `
           <td>${e.date}</td>
-          <td>${e.orderId}</td>
+          <td>${orderLabel}</td>
           <td>${e.pieceId}</td>
           <td>${e.station}</td>
           <td>${e.worker}</td>
           <td>${e.reason}</td>
         `;
-                tr.addEventListener("click", () => {
-                    window.location.href = `order-details.html?order=${encodeURIComponent(e.orderId)}`;
-                });
+                if (e.orderId) {
+                    tr.addEventListener("click", () => {
+                        window.location.href = `order-details.html?order=${encodeURIComponent(e.orderId)}`;
+                    });
+                }
                 brokenEventsTbody.appendChild(tr);
             });
 
@@ -1198,7 +1061,6 @@
                 brokenEventsTbody.appendChild(tr);
             }
 
-            // group by station
             brokenByStationTbody.innerHTML = "";
             const bySt = groupCount(broken, x => x.station);
             bySt.slice(0, 10).forEach(r => {
@@ -1213,9 +1075,8 @@
             });
             if (!bySt.length) brokenByStationTbody.innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
 
-            // group by reason
             brokenByReasonTbody.innerHTML = "";
-            const byReason = groupCount(broken, x => x.reason);
+            const byReason = groupCount(broken, x => x.reason || "—");
             byReason.slice(0, 10).forEach(r => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `<td>${r.key}</td><td>${r.value}</td>`;
@@ -1223,7 +1084,6 @@
             });
             if (!byReason.length) brokenByReasonTbody.innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
 
-            // group by worker
             brokenByWorkerTbody.innerHTML = "";
             const byWorker = groupCount(broken, x => x.worker);
             byWorker.slice(0, 10).forEach(r => {
@@ -1238,9 +1098,8 @@
             const prodByStationTbody = document.getElementById("prodByStationTbody");
             const prodByWorkerTbody = document.getElementById("prodByWorkerTbody");
 
-            // By station
             prodByStationTbody.innerHTML = "";
-            const sums = groupSum(prod, x => x.station, x => x.completed);
+            const sums = groupSum(prod, x => x.station, x => x.completed || 0);
             const daysCount = uniqueDaysInRange(filters.from, filters.to).length;
 
             sums.forEach(r => {
@@ -1260,10 +1119,8 @@
             });
             if (!sums.length) prodByStationTbody.innerHTML = `<tr><td colspan="3" class="muted">No productivity data.</td></tr>`;
 
-            // By worker (completed + broken)
             prodByWorkerTbody.innerHTML = "";
-            const prodByWorker = groupSum(prod, x => `${x.worker}||${x.station}`, x => x.completed);
-
+            const prodByWorker = groupSum(prod, x => `${x.worker}||${x.station}`, x => x.completed || 0);
             const brokenByWorker = groupCount(broken, x => `${x.worker}||${x.station}`);
             const brokenMap = new Map(brokenByWorker.map(x => [x.key, x.value]));
 
@@ -1289,7 +1146,6 @@
 
             leadTimeTbody.innerHTML = "";
 
-            // avg per station
             const sumAvg = groupSum(lead, x => x.station, x => x.avgMin);
             const sumMax = groupSum(lead, x => x.station, x => x.maxMin);
             const count = groupCount(lead, x => x.station);
@@ -1335,19 +1191,20 @@
             const box = document.getElementById("deliverySummaryBox");
             tbody.innerHTML = "";
 
-            // show last 20 by due date
-            const rows = [...deliveryOrders].sort((a, b) => b.dueDate.localeCompare(a.dueDate)).slice(0, 20);
+            const rows = [...deliveryOrders].sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || "")).slice(0, 20);
 
             let delivered = 0, ontime = 0, late = 0, partial = 0, full = 0;
 
             rows.forEach(o => {
                 const deliveredDate = o.deliveredDate || "-";
-                const due = o.dueDate;
+                const due = o.dueDate || "-";
 
                 const isDelivered = !!o.deliveredDate;
                 if (isDelivered) delivered++;
 
-                const isLate = isDelivered ? (new Date(o.deliveredDate) > new Date(o.dueDate)) : false;
+                const isLate = isDelivered && o.dueDate
+                    ? (new Date(o.deliveredDate) > new Date(o.dueDate))
+                    : false;
                 if (isDelivered && isLate) late++;
                 if (isDelivered && !isLate) ontime++;
 
@@ -1360,17 +1217,21 @@
                 if (isDelivered && isLate && o.deliveryType === "Full") statusHtml = `<span class="pill warn">Late (Full)</span>`;
                 if (isDelivered && isLate && o.deliveryType === "Partial") statusHtml = `<span class="pill warn">Late (Partial)</span>`;
 
+                const orderLabel = o.orderNo || o.id;
+
                 const tr = document.createElement("tr");
                 tr.classList.add("clickable");
                 tr.innerHTML = `
-          <td>${o.id}</td>
+          <td>${orderLabel}</td>
           <td>${o.customer}</td>
           <td>${due}</td>
           <td>${deliveredDate}</td>
           <td>${o.deliveryType}</td>
           <td>${statusHtml}</td>
         `;
-                tr.addEventListener("click", () => window.location.href = `order-details.html?order=${encodeURIComponent(o.id)}`);
+                tr.addEventListener("click", () =>
+                    window.location.href = `order-details.html?order=${encodeURIComponent(o.id)}`
+                );
                 tbody.appendChild(tr);
             });
 
@@ -1404,7 +1265,6 @@
                 return;
             }
 
-            // take latest date
             const latestDate = wip.reduce((m, x) => x.date > m ? x.date : m, wip[0].date);
             const snapshot = wip.filter(x => x.date === latestDate);
 
@@ -1442,24 +1302,20 @@
       `;
         }
 
-
         /* =========================================================
-          EXPORTS (Excel CSV + PDF Print)
+          EXPORTS
         ========================================================== */
 
         function setupExports(filters, broken, prod, lead, deliveryOrders, wip) {
-
             exportExcelBtn.onclick = () => {
-                // Create one combined CSV (Excel-friendly)
                 const lines = [];
 
                 lines.push(`Glass Tracking Reports`);
                 lines.push(`Filters,${filters.from} to ${filters.to},Order,${filters.order || "-"},Customer,${filters.customer},Station,${filters.station}`);
                 lines.push("");
 
-                // KPIs
                 const totalBroken = broken.length;
-                const totalCompleted = prod.reduce((s, x) => s + x.completed, 0);
+                const totalCompleted = prod.reduce((s, x) => s + (x.completed || 0), 0);
                 const brokenRate = totalCompleted ? (totalBroken / totalCompleted) : 0;
 
                 const delivered = deliveryOrders.filter(o => o.deliveredDate);
@@ -1470,23 +1326,21 @@
                 lines.push(`KPI,${totalBroken},${(brokenRate * 100).toFixed(1)}%,${totalCompleted},${(ontimeRate * 100).toFixed(1)}%`);
                 lines.push("");
 
-                // Broken events
                 lines.push("BROKEN EVENTS");
-                lines.push("date,order,piece,station,worker,reason");
+                lines.push("date,orderNo,piece,station,worker,reason");
                 broken.slice(0, 500).forEach(e => {
-                    lines.push(`${e.date},${e.orderId},${e.pieceId},${e.station},${e.worker},${e.reason}`);
+                    const orderLabel = e.orderNo || e.orderId || "";
+                    lines.push(`${e.date},${orderLabel},${e.pieceId},${e.station},${e.worker},${e.reason}`);
                 });
                 lines.push("");
 
-                // Productivity
                 lines.push("PRODUCTIVITY (SCANS)");
                 lines.push("date,station,worker,completed");
                 prod.slice(0, 2000).forEach(p => {
-                    lines.push(`${p.date},${p.station},${p.worker},${p.completed}`);
+                    lines.push(`${p.date},${p.station},${p.worker},${p.completed || 0}`);
                 });
                 lines.push("");
 
-                // Lead time
                 lines.push("LEAD TIME SAMPLES");
                 lines.push("date,station,avgMin,maxMin");
                 lead.slice(0, 2000).forEach(l => {
@@ -1494,15 +1348,14 @@
                 });
                 lines.push("");
 
-                // Delivery
                 lines.push("DELIVERY ORDERS");
-                lines.push("order,customer,created,due,delivered,deliveryType");
+                lines.push("orderNo,customer,created,due,delivered,deliveryType");
                 deliveryOrders.slice(0, 1000).forEach(o => {
-                    lines.push(`${o.id},${o.customer},${o.createdDate},${o.dueDate},${o.deliveredDate || "-"},${o.deliveryType}`);
+                    const orderLabel = o.orderNo || o.id;
+                    lines.push(`${orderLabel},${o.customer},${o.createdDate},${o.dueDate || "-"},${o.deliveredDate || "-"},${o.deliveryType}`);
                 });
                 lines.push("");
 
-                // WIP
                 lines.push("WIP SNAPSHOT");
                 lines.push("date,stage,waiting,inProgress");
                 wip.slice(0, 2000).forEach(x => {
@@ -1521,16 +1374,63 @@
             };
 
             exportPdfBtn.onclick = () => {
-                // For PDF: use Print dialog (Save as PDF)
                 window.print();
             };
         }
 
+        /* =========================================================
+          INIT – Fetch from backend
+        ========================================================== */
 
-        // First render
+        async function initReports() {
+            const token = localStorage.getItem("token");
+            try {
+                const res = await fetch("/api/reports/base", {
+                    headers: { Authorization: "Bearer " + token }
+                });
+                const data = await res.json();
+                if (!data.ok) {
+                    console.error("Reports error:", data.error || data.details);
+                    document.querySelector(".main-subtitle").textContent = "Error loading reports.";
+                    return;
+                }
+
+                STATIONS = data.stations || [];
+                CUSTOMERS = data.customers || [];
+                ORDERS = data.orders || [];
+                PROD_SCANS = data.prodScans || [];
+                BROKEN_EVENTS = data.brokenEvents || [];
+                LEAD_SAMPLES = data.leadSamples || [];
+                WIP_SNAPSHOTS = data.wipSnapshots || [];
+
+                // Fill dropdowns من الداتا الحقيقية
+                customerFilter.innerHTML = '<option value="all">Customer: All</option>';
+                CUSTOMERS.forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = c;
+                    opt.textContent = c;
+                    customerFilter.appendChild(opt);
+                });
+
+                stationFilter.innerHTML = '<option value="all">Station: All</option>';
+                STATIONS.forEach(s => {
+                    const opt = document.createElement("option");
+                    opt.value = s;
+                    opt.textContent = s;
+                    stationFilter.appendChild(opt);
+                });
+
+                renderAll();
+            } catch (err) {
+                console.error("initReports error:", err);
+                document.querySelector(".main-subtitle").textContent = "Error loading reports.";
+            }
+        }
+
         window.addEventListener("resize", () => renderAll());
-        renderAll();
+        initReports();
     </script>
+
 </body>
 
 </html>

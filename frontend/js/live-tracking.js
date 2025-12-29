@@ -1,20 +1,10 @@
 (function () {
-  // ✅ auth (if you use auth.js like orders.html)
   if (window.protectPage && !window.protectPage()) return;
 
+  const REFRESH_SECONDS = 15;
   const el = (id) => document.getElementById(id);
 
-  const STAGES = [
-    "CUTTING",
-    "GRINDING",
-    "WASHING",
-    "FURNACE",
-    "LOADING",
-    "DELIVERY",
-  ];
-  const REFRESH_SECONDS = 15;
-
-  let allOrders = [];
+  let allStations = [];
   let timer = null;
   let countdown = REFRESH_SECONDS;
 
@@ -26,7 +16,7 @@
 
   function getBasePathSafe() {
     if (window.getBasePath) return window.getBasePath();
-    return "/"; // assumes same origin
+    return "/";
   }
 
   function fmtTime(v) {
@@ -34,80 +24,100 @@
     return d.toLocaleString();
   }
 
-  function normalizeOrder(o) {
-    // be tolerant with field names
-    return {
-      id: o.id ?? o.order_id ?? o.orderId,
-      orderNo: o.order_no ?? o.orderNo ?? o.number ?? o.code ?? "—",
-      client: o.client ?? o.customer ?? "—",
-      pieces: o.pieces ?? o.pieces_count ?? o.qty ?? 0,
-      stage: (o.stage ?? o.current_stage ?? o.station ?? "")
-        .toString()
-        .toUpperCase(),
-      status: (o.status ?? "").toString().toLowerCase(), // draft/active/completed...
-      isDelayed: !!(o.is_delayed ?? o.delayed ?? o.has_issue ?? o.problem),
-    };
-  }
-
   function pillClass(order) {
-    // delayed > completed > in progress
-    if (order.isDelayed) return "order-pill delayed";
-    if (order.status === "completed") return "order-pill completed";
+    if (order.state === "delayed") return "order-pill delayed";
     return "order-pill in-progress";
   }
 
-  function groupByStage(list) {
-    const map = {};
-    STAGES.forEach((s) => (map[s] = []));
-    list.forEach((o) => {
-      const st = STAGES.includes(o.stage) ? o.stage : "CUTTING";
-      map[st].push(o);
-    });
-    return map;
+  function fillStationFilter() {
+    const sel = el("stationFilter");
+    if (!sel) return;
+
+    const current = sel.value || "all";
+    sel.innerHTML =
+      `<option value="all">All</option>` +
+      allStations
+        .map((s) => `<option value="${s.id}">${s.name}</option>`)
+        .join("");
+
+    if ([...sel.options].some((o) => o.value === current)) sel.value = current;
   }
 
-  function applyFilters(list) {
-    const q = (el("searchInput").value || "").trim().toLowerCase();
-    const stage = el("stageFilter").value;
-    const includeCompleted = el("includeCompleted").checked;
+  function applyFilters(stations) {
+    const q = (el("searchInput")?.value || "").trim().toLowerCase();
+    const stationId = el("stationFilter")?.value || "all";
+    const onlyDelayed = !!el("onlyDelayed")?.checked;
 
-    return list.filter((o) => {
-      if (!includeCompleted && o.status === "completed") return false;
-      if (stage !== "all" && o.stage !== stage) return false;
-      if (!q) return true;
+    return stations
+      .filter(
+        (st) => stationId === "all" || String(st.id) === String(stationId)
+      )
+      .map((st) => {
+        let orders = Array.isArray(st.orders) ? st.orders : [];
 
-      return (
-        String(o.orderNo).toLowerCase().includes(q) ||
-        String(o.client).toLowerCase().includes(q)
-      );
-    });
+        if (onlyDelayed) {
+          orders = orders.filter((o) => o.state === "delayed");
+        }
+
+        if (q) {
+          orders = orders.filter((o) => {
+            return (
+              String(o.orderNo || "")
+                .toLowerCase()
+                .includes(q) ||
+              String(o.client || "")
+                .toLowerCase()
+                .includes(q)
+            );
+          });
+        }
+
+        return { ...st, orders };
+      });
   }
 
-  function renderStages(grouped) {
+  function renderStations(stations) {
     const container = el("stagesContainer");
     container.innerHTML = "";
 
-    STAGES.forEach((stage) => {
-      const orders = grouped[stage] || [];
+    if (!stations.length) {
+      container.innerHTML = `
+        <div class="stage-column">
+          <div class="stage-header">
+            <div class="stage-title">No stations</div>
+            <div class="stage-count">—</div>
+          </div>
+          <button class="order-pill empty" type="button">No active stations found</button>
+        </div>
+      `;
+      return;
+    }
+
+    stations.forEach((st) => {
+      const orders = Array.isArray(st.orders) ? st.orders : [];
 
       const col = document.createElement("div");
       col.className = "stage-column";
 
       col.innerHTML = `
         <div class="stage-header">
-          <div class="stage-title">${stage}</div>
+          <div class="stage-title">${st.name}</div>
           <div class="stage-count">${orders.length} orders</div>
         </div>
-        <div class="stage-list" style="overflow:auto; max-height:340px; padding-right:4px;">
+
+        <div class="stage-list">
           ${
             orders.length
               ? orders
                   .map(
                     (o) => `
-                  <button class="${pillClass(o)}" data-id="${o.id}">
-                    ${o.orderNo} · ${o.pieces} pcs · ${o.client}
-                    ${o.isDelayed ? " (Delayed)" : ""}
-                  </button>`
+                      <button class="${pillClass(o)}" data-order-id="${
+                      o.orderId
+                    }">
+                        ${o.orderNo} · ${o.pieces} pcs · ${o.client}
+                        ${o.state === "delayed" ? " (Delayed)" : ""}
+                      </button>
+                    `
                   )
                   .join("")
               : `<button class="order-pill empty" type="button">No active orders</button>`
@@ -118,10 +128,10 @@
       container.appendChild(col);
     });
 
-    // click => open details by id ✅
-    container.querySelectorAll(".order-pill[data-id]").forEach((btn) => {
+    // click => open order details by id
+    container.querySelectorAll("button[data-order-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
+        const id = btn.getAttribute("data-order-id");
         if (!id) return;
         window.location.href = `order-details.html?id=${encodeURIComponent(
           id
@@ -131,20 +141,27 @@
   }
 
   function refreshUI() {
-    const filtered = applyFilters(allOrders);
-    const grouped = groupByStage(filtered);
-    renderStages(grouped);
+    const filteredStations = applyFilters(allStations);
+    renderStations(filteredStations);
   }
 
   async function fetchLive() {
     const base = getBasePathSafe();
-    const url = new URL(
-      base + "api/live-tracking",
-      window.location.origin
-    ).toString();
+    const url = new URL(base + "api/live-tracking", location.origin).toString();
 
-    const res = await fetch(url, { headers: getAuthHeadersSafe() });
+    const res = await fetch(url, {
+      headers: getAuthHeadersSafe(),
+      cache: "no-store",
+    });
+
     const data = await res.json().catch(() => ({}));
+
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("/index.html?logout=1");
+      return;
+    }
 
     if (!res.ok || data.ok === false) {
       el("stagesContainer").innerHTML = `
@@ -156,19 +173,20 @@
           <button class="order-pill delayed" type="button">Failed to load live tracking</button>
         </div>
       `;
+      el("lastUpdated").textContent = "";
       return;
     }
 
-    const rawList = Array.isArray(data.orders)
-      ? data.orders
-      : Array.isArray(data)
-      ? data
-      : [];
-    allOrders = rawList.map(normalizeOrder);
+    allStations = Array.isArray(data.stations) ? data.stations : [];
+    allStations.sort(
+      (a, b) => Number(a.stageOrder || 0) - Number(b.stageOrder || 0)
+    );
+
+    fillStationFilter();
+    refreshUI();
 
     el("lastUpdated").textContent =
       "Last update: " + fmtTime(data.updatedAt || Date.now());
-    refreshUI();
   }
 
   function startCountdown() {
@@ -178,6 +196,7 @@
     timer = setInterval(() => {
       countdown--;
       el("refreshBadge").textContent = `Auto-refresh: ${countdown}s`;
+
       if (countdown <= 0) {
         countdown = REFRESH_SECONDS;
         fetchLive().catch(console.error);
@@ -185,41 +204,25 @@
     }, 1000);
   }
 
-  function initHeader() {
-    // chips
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    el("userChip").textContent = `User: ${user?.username || "—"}`;
-    el("chipFactory").textContent = `Factory: ${user?.factory || "Tripoli"}`;
-
-    // logout
-    el("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.replace("/index.html?logout=1");
+  function bindUI() {
+    ["searchInput", "stationFilter", "onlyDelayed"].forEach((id) => {
+      el(id)?.addEventListener("input", refreshUI);
+      el(id)?.addEventListener("change", refreshUI);
     });
 
-    // refresh now
-    el("refreshNowBtn").addEventListener("click", () =>
+    el("refreshNowBtn")?.addEventListener("click", () =>
       fetchLive().catch(console.error)
     );
-  }
 
-  function bindFilters() {
-    ["searchInput", "stageFilter", "includeCompleted"].forEach((id) => {
-      el(id).addEventListener("input", refreshUI);
-      el(id).addEventListener("change", refreshUI);
-    });
-
-    el("resetBtn").addEventListener("click", () => {
+    el("resetBtn")?.addEventListener("click", () => {
       el("searchInput").value = "";
-      el("stageFilter").value = "all";
-      el("includeCompleted").checked = false;
+      el("stationFilter").value = "all";
+      el("onlyDelayed").checked = false;
       refreshUI();
     });
   }
 
-  initHeader();
-  bindFilters();
+  bindUI();
   fetchLive().catch(console.error);
   startCountdown();
 })();

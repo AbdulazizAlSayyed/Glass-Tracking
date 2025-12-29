@@ -24,8 +24,8 @@
 body {
   background: var(--bg);
   color: var(--text-main);
+  overflow-x: hidden; /* ✅ يمنع سكرول أفقي على مستوى الصفحة */
 }
-
 /* --------- Layout --------- */
 
 .app-shell {
@@ -667,7 +667,7 @@ body {
 
 .stage-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
   font-size: 0.8rem;
 }
@@ -1068,4 +1068,479 @@ body {
   text-align: center;
   color: var(--text-muted);
   padding: 18px 10px;
+}
+/* -------- Order Details Enhancements -------- */
+
+.filters-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.9fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.filter-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.input,
+.select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.btn.btn-ghost:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+/* nicer tables */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.table thead th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  font-size: 0.9rem;
+}
+
+.table tbody tr:nth-child(even) {
+  background: rgba(2, 6, 23, 0.02);
+}
+
+.table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.empty-row td {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 18px;
+}
+
+/* status pill stronger */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  border: 1px solid var(--border);
+}
+.pill.blue {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+.pill.green {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--success);
+  border-color: rgba(22, 163, 74, 0.22);
+}
+.pill.red {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+.pill.gray {
+  background: rgba(2, 6, 23, 0.06);
+  color: #334155;
+  border-color: rgba(2, 6, 23, 0.08);
+}
+
+/* responsive */
+@media (max-width: 900px) {
+  .filters-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-actions {
+    justify-content: stretch;
+  }
+}
+/* -------- Live Tracking Toolbar -------- */
+.live-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.live-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.live-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.live-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.input,
+.select {
+  height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  min-width: 220px;
+}
+
+.checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  user-select: none;
+  color: var(--text-muted);
+}
+.checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+/* stage list scroll */
+.stage-list {
+  overflow: auto;
+  max-height: 340px;
+  padding-right: 4px;
+}
+
+/* last updated + hint */
+.live-updated {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.live-hint {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+.station-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-soft);
+}
+
+.order-box {
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 10px 0;
+  border-left: 4px solid var(--primary);
+}
+
+.empty {
+  color: #888;
+  font-style: italic;
+}
+/* ---------- Live Tracking Layout ---------- */
+
+.content {
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.content h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* موبايل: نخلي الكرت ياخد عرض كامل */
+@media (max-width: 768px) {
+  #stations {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 16px 16px;
+  }
+}
+/* ---------- Live Tracking Page ---------- */
+
+.content {
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auto-refresh-pill {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.07);
+  color: var(--primary);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+/* الـ Card الكبيرة اللي فيها كل الـ stages */
+.live-card {
+  background: var(--bg-card);
+  border-radius: 18px;
+  padding: 18px 20px 14px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--border);
+}
+
+.live-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.live-card-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.live-card-header p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.live-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 5px;
+}
+
+/* ألوان الحالات */
+.legend-inprogress {
+  background: #bfdbfe;
+}
+
+.legend-delayed {
+  background: #fecaca;
+}
+
+.legend-finished {
+  background: #bbf7d0;
+}
+
+.legend-empty {
+  background: #e5e7eb;
+}
+
+/* صف الأعمدة */
+.stages-row {
+  display: flex;
+  flex-wrap: wrap; /* ✅ لفّ الأعمدة على أسطر */
+  gap: 14px;
+  padding: 4px 2px 6px;
+}
+
+/* عمود لكل محطة */
+.stage-column {
+  flex: 1 1 230px; /* ✅ ياخد عرض مرن ويصغر/يكبر */
+  max-width: 260px;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 10px 10px 8px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ترويسة المحطة */
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.stage-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stage-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.stage-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stage-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+/* "حبّة" لكل أوردر */
+.order-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 12px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+/* الحالة الافتراضية: In progress */
+.pill-inprogress {
+  background: #e0ecff;
+  border-color: #c4d7ff;
+  color: #1d4ed8;
+}
+
+/* ممكن تستعملهم لاحقاً حسب status من الـ DB */
+.pill-delayed {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.pill-finished {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.order-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.pill-order-no {
+  font-weight: 600;
+}
+
+.pill-meta {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.live-card-footer {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Error message */
+.live-error {
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+/* موبايل */
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .live-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stages-row {
+    padding-bottom: 10px;
+  }
 }
