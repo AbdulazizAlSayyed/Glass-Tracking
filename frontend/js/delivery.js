@@ -20,6 +20,36 @@ function safeNum(x) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// ===== API helper =====
+const authToken = localStorage.getItem("token") || null;
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+      ...(authToken ? { Authorization: "Bearer " + authToken } : {}),
+    },
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg = data?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  if (data && data.ok === false) {
+    throw new Error(data.error || "API error");
+  }
+  return data;
+}
+
 // ===== UI refs =====
 const ordersBody = document.getElementById("ordersBody");
 const filterStatus = document.getElementById("filterStatus");
@@ -72,85 +102,29 @@ const previewSearch = document.getElementById("previewSearch");
 const previewCount = document.getElementById("previewCount");
 const previewBody = document.getElementById("previewBody");
 
-// ===== Demo data =====
-// piece status: in_progress | ready | delivered
-const demoOrders = [
-  { orderNo: "ORD-1006", customer: "Project Alpha" },
-  { orderNo: "ORD-1003", customer: "Showroom" },
-  { orderNo: "ORD-1020", customer: "Maison" },
-];
-
-// NOTE: Even if same spec qty=5, we represent 5 pieces (best for tracking),
-// BUT UI will group them so Delivery doesn't see 100 rows.
-const piecesByOrder = {
-  "ORD-1006": [
-    // same spec, 5 pieces
-    ...Array.from({ length: 5 }).map((_, i) => ({
-      glassNo: `580-F1-${String(i + 1).padStart(3, "0")}`,
-      line: "F1",
-      size: "2100×900",
-      type: "10mm Clear T",
-      status: i < 4 ? "ready" : "in_progress",
-      currentStage: i < 4 ? "Packing" : "Furnace",
-    })),
-    // another spec
-    ...Array.from({ length: 3 }).map((_, i) => ({
-      glassNo: `580-F2-${String(i + 1).padStart(3, "0")}`,
-      line: "F2",
-      size: "2000×500",
-      type: "8mm Clear",
-      status: i < 2 ? "ready" : "in_progress",
-      currentStage: i < 2 ? "Quality" : "Washing",
-    })),
-  ],
-  "ORD-1003": [
-    ...Array.from({ length: 3 }).map((_, i) => ({
-      glassNo: `610-F2-${String(i + 1).padStart(3, "0")}`,
-      line: "F2",
-      size: "1200×800",
-      type: "8mm Laminated",
-      status: "delivered",
-      currentStage: "Delivered",
-    })),
-  ],
-  "ORD-1020": [
-    ...Array.from({ length: 7 }).map((_, i) => ({
-      glassNo: `700-A1-${String(i + 1).padStart(3, "0")}`,
-      line: "A1",
-      size: "1500×600",
-      type: "6mm Bronze",
-      status: i < 4 ? "ready" : "in_progress",
-      currentStage: i < 4 ? "Packing" : "Cutting",
-    })),
-  ],
-};
-
-// Delivery notes history per order
-const deliveryNotes = {
-  "ORD-1006": [],
-  "ORD-1003": [
-    {
-      dn: "DN-0001",
-      date: "2025-12-17 17:10",
-      driver: "Truck 2 / Samer",
-      delivered: 3,
-      notes: "Full delivery",
-    },
-  ],
-  "ORD-1020": [],
-};
+// ===== Data from backend =====
+let orders = []; // لستة الأوامر من /api/delivery/orders
+let orderSummaryByNo = {}; // orderNo -> {total, ready, delivered, remaining}
+let orderCustomerByNo = {}; // orderNo -> customer
+let piecesByOrder = {}; // orderNo -> pieces[] (من /api/delivery/orders/:orderNo)
+let deliveryNotes = {}; // orderNo -> history[] (حاليًا فاضية / من الAPI لاحقًا)
 
 let currentOrderNo = null;
 let currentPreviewGroupKey = null;
 
 // ===== logic helpers =====
 function computeOrderSummary(orderNo) {
+  const cached = orderSummaryByNo[orderNo];
+  if (cached) return cached;
+
   const list = piecesByOrder[orderNo] || [];
   const total = list.length;
   const ready = list.filter((p) => p.status === "ready").length;
   const delivered = list.filter((p) => p.status === "delivered").length;
   const remaining = total - delivered;
-  return { total, ready, delivered, remaining };
+  const summary = { total, ready, delivered, remaining };
+  orderSummaryByNo[orderNo] = summary;
+  return summary;
 }
 
 function deliveryStatusText(orderNo) {
@@ -226,21 +200,59 @@ function setView(mode) {
   }
 }
 
+// ===== تحميل الأوامر من الـ backend =====
+async function loadOrders() {
+  try {
+    showStatus("info", "Loading orders...");
+    ordersBody.innerHTML =
+      '<tr><td colspan="8" style="color:#6b7280; font-size:0.85rem;">Loading…</td></tr>';
+
+    const res = await apiFetch("/api/delivery/orders");
+    const data = res.data || [];
+
+    orders = data;
+    orderSummaryByNo = {};
+    orderCustomerByNo = {};
+    data.forEach((o) => {
+      orderCustomerByNo[o.orderNo] = o.customer;
+      orderSummaryByNo[o.orderNo] = {
+        total: o.total,
+        ready: o.ready,
+        delivered: o.delivered,
+        remaining: o.remaining,
+      };
+    });
+
+    renderOrders();
+    showStatus(
+      "info",
+      "Choose an order to prepare a Delivery Note (Grouped Qty or Pieces)."
+    );
+  } catch (err) {
+    console.error("loadOrders error:", err);
+    ordersBody.innerHTML =
+      '<tr><td colspan="8" style="color:#b91c1c; font-size:0.85rem;">Error loading orders.</td></tr>';
+    showStatus("error", "Error loading orders.");
+  }
+}
+
 // ===== render orders =====
 function renderOrders() {
   const st = filterStatus.value || "all";
   const q = (searchOrders.value || "").trim().toLowerCase();
   const readyOnly = !!readyOnlyToggle.checked;
 
-  const rows = demoOrders
+  const rows = orders
     .filter((o) => {
-      const { ready, delivered, remaining } = computeOrderSummary(o.orderNo);
-      if (readyOnly && ready === 0) return false;
+      const s = computeOrderSummary(o.orderNo);
+
+      if (readyOnly && s.ready === 0) return false;
 
       if (st !== "all") {
-        if (st === "notshipped" && !(delivered === 0)) return false;
-        if (st === "partial" && !(delivered > 0 && remaining > 0)) return false;
-        if (st === "delivered" && !(remaining === 0)) return false;
+        if (st === "notshipped" && !(s.delivered === 0)) return false;
+        if (st === "partial" && !(s.delivered > 0 && s.remaining > 0))
+          return false;
+        if (st === "delivered" && !(s.remaining === 0)) return false;
       }
 
       const searchText = `${o.orderNo} ${o.customer}`.toLowerCase();
@@ -290,16 +302,14 @@ ordersBody.addEventListener("click", (e) => {
   openOrder(btn.dataset.open);
 });
 
-// ===== open panel =====
+// ===== open panel / load one order =====
 function updatePanelHeader(orderNo) {
-  const o = demoOrders.find((x) => x.orderNo === orderNo);
-  const s = computeOrderSummary(orderNo);
+  const summary = computeOrderSummary(orderNo);
+  const customer = orderCustomerByNo[orderNo] || "";
 
   panelOrderId.textContent = orderNo;
-  panelMeta.textContent = `${
-    o?.customer || ""
-  } • Grouped delivery supported • Partial delivery supported`;
-  panelSummary.textContent = `Total: ${s.total} • Ready: ${s.ready} • Delivered: ${s.delivered} • Remaining: ${s.remaining}`;
+  panelMeta.textContent = `${customer} • Grouped delivery supported • Partial delivery supported`;
+  panelSummary.textContent = `Total: ${summary.total} • Ready: ${summary.ready} • Delivered: ${summary.delivered} • Remaining: ${summary.remaining}`;
 
   dnInput.value = nextDN(orderNo);
   driverInput.value = "";
@@ -336,7 +346,6 @@ function renderGrouped(orderNo) {
         const stageLabel =
           stages.length === 0 ? "—" : stages.length === 1 ? stages[0] : "Mixed";
 
-        // deliver input only if ready > 0
         const inputHtml =
           max > 0
             ? `<input class="input" style="max-width:110px; padding:6px 10px;" type="number" min="0" max="${max}"
@@ -414,24 +423,56 @@ function renderPieces(orderNo) {
   updateSelectedPiecesCount();
 }
 
-function openOrder(orderNo) {
+async function openOrder(orderNo) {
   currentOrderNo = orderNo;
   orderPanel.style.display = "block";
+  showStatus("info", `Loading ${orderNo} details…`);
 
-  updatePanelHeader(orderNo);
-  renderGrouped(orderNo);
-  renderPieces(orderNo);
-  renderHistory(orderNo);
+  try {
+    const res = await apiFetch(
+      `/api/delivery/orders/${encodeURIComponent(orderNo)}`
+    );
+    const data = res.data || {};
+    const pieces = data.pieces || [];
+    const history = data.history || [];
 
-  setView("grouped");
-  showStatus("info", `Opened ${orderNo}. Use Grouped (Qty) or Pieces view.`);
+    // خزن القطع و history
+    piecesByOrder[orderNo] = pieces;
+    deliveryNotes[orderNo] = history.map((h) => ({
+      dn: h.dn,
+      date: h.date,
+      driver: h.driver,
+      delivered: h.delivered,
+      notes: h.notes,
+    }));
+
+    // نعيد حساب الـ summary من القطع
+    delete orderSummaryByNo[orderNo];
+    computeOrderSummary(orderNo);
+
+    // لو ما كان عندنا اسم الزبون من قبل، خذه من الـ API
+    if (data.order && data.order.customer) {
+      orderCustomerByNo[orderNo] = data.order.customer;
+    }
+
+    updatePanelHeader(orderNo);
+    renderGrouped(orderNo);
+    renderPieces(orderNo);
+    renderHistory(orderNo);
+
+    setView("grouped");
+    showStatus("info", `Opened ${orderNo}. Use Grouped (Qty) or Pieces view.`);
+  } catch (err) {
+    console.error("openOrder error:", err);
+    showStatus("error", `Error loading order ${orderNo}.`);
+  }
 }
 
 // ===== Tabs =====
 tabGrouped.addEventListener("click", () => setView("grouped"));
 tabPieces.addEventListener("click", () => setView("pieces"));
 
-// ===== Grouped: selection + confirm =====
+// ===== Grouped: selection + confirm (ما زال front-end فقط) =====
 function getQtyInputs() {
   return Array.from(groupBody.querySelectorAll("input[data-qty]"));
 }
@@ -464,11 +505,11 @@ resetQtyBtn.addEventListener("click", () => {
   groupMsg.textContent = "Quantities reset.";
 });
 
+// NOTE: لسه هالجزء يعدّل على البيانات في الواجهة فقط، مش في DB
 function deliverByGroupedQty(orderNo) {
   const all = piecesByOrder[orderNo] || [];
   const inputs = getQtyInputs();
 
-  // Build request: groupKey -> qty
   const qtyByGroup = {};
   for (const inp of inputs) {
     const key = inp.dataset.qty;
@@ -476,13 +517,11 @@ function deliverByGroupedQty(orderNo) {
     if (qty > 0) qtyByGroup[key] = qty;
   }
 
-  // Validate at least one
   const selectedTotal = Object.values(qtyByGroup).reduce((a, b) => a + b, 0);
   if (selectedTotal <= 0) {
     return { ok: false, msg: "No quantities selected. Enter qty to deliver." };
   }
 
-  // Execute: for each group, take first N READY pieces and mark delivered
   let deliveredNow = 0;
 
   for (const [key, qty] of Object.entries(qtyByGroup)) {
@@ -512,7 +551,6 @@ function deliverByGroupedQty(orderNo) {
 confirmGroupedBtn.addEventListener("click", () => {
   if (!currentOrderNo) return;
 
-  // Later: POST /api/delivery/confirmGrouped
   const res = deliverByGroupedQty(currentOrderNo);
 
   if (!res.ok) {
@@ -534,7 +572,7 @@ confirmGroupedBtn.addEventListener("click", () => {
   groupMsg.className = "station-status-message success";
   groupMsg.textContent = `✅ ${dn} confirmed. Delivered ${res.deliveredNow} piece(s).`;
 
-  // refresh UI
+  // refresh UI (داخل session فقط)
   updatePanelHeader(currentOrderNo);
   renderGrouped(currentOrderNo);
   renderPieces(currentOrderNo);
@@ -542,7 +580,7 @@ confirmGroupedBtn.addEventListener("click", () => {
   renderOrders();
 });
 
-// ===== Pieces: selection + confirm =====
+// ===== Pieces: selection + confirm (front-end فقط) =====
 function getSelectedPieces() {
   return Array.from(
     piecesBody.querySelectorAll("input[data-select]:checked")
@@ -697,8 +735,4 @@ previewSearch.addEventListener("input", () => {
 });
 
 // ===== initial =====
-renderOrders();
-showStatus(
-  "info",
-  "Ready. Open an order to prepare a Delivery Note (Grouped Qty or Pieces)."
-);
+loadOrders();
