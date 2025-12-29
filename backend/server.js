@@ -15,6 +15,7 @@ const activationRoutes = require("./routes/activation");
 const liveTrackingRoutes = require("./routes/liveTrackingRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const deliveryRoutes = require("./routes/delivery");
+const usersRoutes = require("./routes/users");
 
 // ... middlewares زي json, cors, الخ
 
@@ -63,6 +64,7 @@ app.use("/api/activation", authRequired, activationRoutes);
 app.use("/api/live-tracking", liveTrackingRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/users", usersRoutes);
 
 // frontend pages fallback
 app.get("/:file", (req, res, next) => {

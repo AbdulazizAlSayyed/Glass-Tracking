@@ -6,45 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glass Tracking – Delivery Out</title>
     <link rel="stylesheet" href="css/style.css" />
+    <script>
+        (() => {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            const authToken = localStorage.getItem("token");
+            const params = new URLSearchParams(window.location.search);
+
+            // لو عامل logout
+            if (params.get("logout") === "1") {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.replace("/index.html?logout=1");
+                return;
+            }
+
+            // لو مش داخل أصلاً
+            if (!user || !authToken) {
+                window.location.replace("/index.html?logout=1");
+                return;
+            }
+
+            const current = location.pathname.split("/").pop() || "index.html";
+
+            // حماية عامّة: home_page
+            if (user.homePage && user.homePage !== current) {
+                window.location.replace("/" + user.homePage);
+                return;
+            }
+
+            // حماية زيادة: لازم يكون role = delivery
+            if (user.role !== "delivery") {
+                window.location.replace("/" + (user.homePage || "dashboard.html"));
+                return;
+            }
+        })();
+    </script>
 </head>
-<script>
-    (() => {
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-        const authToken = localStorage.getItem("token");
-        const params = new URLSearchParams(window.location.search);
-
-        // لو عامل logout
-        if (params.get("logout") === "1") {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            window.location.replace("/index.html?logout=1");
-            return;
-        }
-
-        // لو مش داخل أصلاً
-        if (!user || !authToken) {
-            window.location.replace("/index.html?logout=1");
-            return;
-        }
-
-        const current = location.pathname.split("/").pop() || "index.html";
-
-        // ✅ حماية عامّة: مستخدم عنده home_page مختلف ممنوع يفتح هالصفحة
-        if (user.homePage && user.homePage !== current) {
-            window.location.replace("/" + user.homePage);
-            return;
-        }
-
-        // ✅ حماية زيادة: لازم يكون role = 'delivery'
-        if (user.role !== "delivery") {
-            // رجّعو على صفحته الأساسية أو dashboard
-            window.location.replace("/" + (user.homePage || "dashboard.html"));
-            return;
-        }
-
-        // لو كل شي تمام، خلّيه يكمل تحميل الصفحة
-    })();
-</script>
 
 <body>
     <div class="app-shell">
@@ -79,7 +76,8 @@
             <header class="main-header">
                 <div>
                     <div class="main-title">Delivery Out</div>
-                    <div class="main-subtitle">Prepare shipments (partial deliveries supported) + view piece tracking.
+                    <div class="main-subtitle">
+                        Prepare shipments (partial deliveries supported) + view piece tracking.
                     </div>
                 </div>
                 <div class="main-header-right">
@@ -122,7 +120,9 @@
                 <div class="card-header">
                     <div>
                         <div class="card-title">Orders</div>
-                        <div class="card-subtitle">Open order → select ready qty/pieces → confirm DN</div>
+                        <div class="card-subtitle">
+                            Open order → select ready qty/pieces → confirm DN
+                        </div>
                     </div>
                 </div>
 
@@ -140,9 +140,7 @@
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody id="ordersBody">
-                            <!-- injected -->
-                        </tbody>
+                        <tbody id="ordersBody"></tbody>
                     </table>
                 </div>
 
@@ -159,8 +157,12 @@
                     </div>
 
                     <!-- Delivery Note inputs -->
-                    <div
-                        style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px; font-size:0.85rem;">
+                    <div style="
+                            display:grid;
+                            grid-template-columns: 1fr 1fr 1fr;
+                            gap:10px;
+                            margin-bottom:10px;
+                            font-size:0.85rem;">
                         <div>
                             <div class="field-label">Delivery Note #</div>
                             <input class="input" id="dnInput" placeholder="Auto (DN-0001)" disabled />
@@ -177,7 +179,9 @@
 
                     <!-- View tabs -->
                     <div class="tabs" style="margin-bottom:10px;">
-                        <button class="tab active" id="tabGrouped" type="button">Grouped by spec (Qty)</button>
+                        <button class="tab active" id="tabGrouped" type="button">
+                            Grouped by spec (Qty)
+                        </button>
                         <button class="tab" id="tabPieces" type="button">By pieces</button>
                     </div>
 
@@ -201,21 +205,26 @@
                                         <th>Preview</th>
                                     </tr>
                                 </thead>
-                                <tbody id="groupBody">
-                                    <!-- injected -->
-                                </tbody>
+                                <tbody id="groupBody"></tbody>
                             </table>
                         </div>
 
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+                        <div style="
+                                display:flex;
+                                justify-content:space-between;
+                                align-items:center;
+                                gap:8px;
+                                margin-top:10px;">
                             <div style="font-size:0.85rem; color:#6b7280;">
                                 Selected for this DN: <strong id="selectedQty">0</strong> piece(s)
                             </div>
                             <div style="display:flex; gap:8px;">
-                                <button class="btn btn-ghost" id="resetQtyBtn" type="button">Reset quantities</button>
-                                <button class="btn btn-primary" id="confirmGroupedBtn" type="button">Confirm Delivery
-                                    Note</button>
+                                <button class="btn btn-ghost" id="resetQtyBtn" type="button">
+                                    Reset quantities
+                                </button>
+                                <button class="btn btn-primary" id="confirmGroupedBtn" type="button">
+                                    Confirm Delivery Note
+                                </button>
                             </div>
                         </div>
 
@@ -243,21 +252,24 @@
                                         <th>Deliver now</th>
                                     </tr>
                                 </thead>
-                                <tbody id="piecesBody">
-                                    <!-- injected -->
-                                </tbody>
+                                <tbody id="piecesBody"></tbody>
                             </table>
                         </div>
 
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+                        <div style="
+                                display:flex;
+                                justify-content:space-between;
+                                align-items:center;
+                                gap:8px;
+                                margin-top:10px;">
                             <div style="font-size:0.85rem; color:#6b7280;">
                                 Selected for this DN: <strong id="selectedPiecesCount">0</strong> piece(s)
                             </div>
                             <div style="display:flex; gap:8px;">
                                 <button class="btn btn-ghost" id="clearPiecesBtn" type="button">Clear</button>
-                                <button class="btn btn-primary" id="confirmPiecesBtn" type="button">Confirm Delivery
-                                    Note</button>
+                                <button class="btn btn-primary" id="confirmPiecesBtn" type="button">
+                                    Confirm Delivery Note
+                                </button>
                             </div>
                         </div>
 
@@ -280,9 +292,7 @@
                                         <th>Notes</th>
                                     </tr>
                                 </thead>
-                                <tbody id="historyBody">
-                                    <!-- injected -->
-                                </tbody>
+                                <tbody id="historyBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -339,8 +349,9 @@
             </div>
         </div>
     </div>
+
+    <!-- تحديث chip اسم المستخدم -->
     <script>
-        // تحديث اسم المستخدم / الدور في الـ chip
         (function () {
             try {
                 const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -356,11 +367,9 @@
             }
         })();
     </script>
-</body>
 
-</html>
-
-<script src="js/delivery.js"></script>
+    <!-- Delivery logic -->
+    <script src="js/delivery.js"></script>
 </body>
 
 </html>

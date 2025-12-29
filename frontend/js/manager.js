@@ -83,6 +83,50 @@ function renderKpis() {
     document.getElementById("urgentBreakStage").textContent = "—";
   }
 }
+function renderKpis() {
+  const k = DASHBOARD.kpis || {};
+
+  document.getElementById("kpiOrdersToday").textContent = k.ordersToday ?? 0;
+  document.getElementById("kpiActiveOrders").textContent = k.activeOrders ?? 0;
+  document.getElementById("kpiWipPieces").textContent = k.wipPieces ?? 0;
+  document.getElementById("kpiCompletedToday").textContent =
+    k.completedToday ?? 0;
+  document.getElementById("kpiBrokenToday").textContent = k.brokenToday ?? 0;
+  document.getElementById("kpiDeliveryReady").textContent =
+    k.deliveryReady ?? 0;
+
+  // 🔵 جديدة:
+  document.getElementById("kpiDeliveredPiecesToday").textContent =
+    k.deliveredPiecesToday ?? 0;
+  document.getElementById("kpiDeliveredOrdersToday").textContent =
+    k.deliveredOrdersToday ?? 0;
+
+  const chip = document.getElementById("kpiOrdersTodayChip");
+  if (chip) {
+    const v = Number(k.ordersToday || 0);
+    chip.textContent = v
+      ? `+${Math.max(1, Math.floor(v / 2))} vs yesterday`
+      : "No change";
+  }
+
+  document.getElementById("urgentDraft").textContent = k.draftOrders ?? 0;
+  document.getElementById("urgentLate").textContent = k.delayedOrders ?? 0;
+  document.getElementById("urgentReadyDelivery").textContent =
+    k.deliveryReady ?? 0;
+
+  const st = DASHBOARD.stageLoad || [];
+  if (st.length) {
+    const maxBrokenStage = st.reduce(
+      (best, s) => (Number(s.broken) > Number(best.broken) ? s : best),
+      st[0]
+    );
+    document.getElementById(
+      "urgentBreakStage"
+    ).textContent = `${maxBrokenStage.stage} (${maxBrokenStage.broken})`;
+  } else {
+    document.getElementById("urgentBreakStage").textContent = "—";
+  }
+}
 
 // =========================
 // Recent orders

@@ -135,6 +135,38 @@ function deliveryStatusText(orderNo) {
   return { text: "Partially shipped", cls: "status-in-progress" };
 }
 
+async function submitDelivery(mode, payload) {
+  const body = {
+    orderNo: currentOrderNo,
+    dnNo: dnInput.value || null,
+    driver: (driverInput.value || "").trim(),
+    notes: (notesInput.value || "").trim(),
+    mode,
+    ...payload,
+  };
+
+  const res = await apiFetch("/api/delivery/confirm", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  const data = res.data;
+  // حدّث history المحلي من الـ API
+  if (!deliveryNotes[currentOrderNo]) deliveryNotes[currentOrderNo] = [];
+  deliveryNotes[currentOrderNo] = data.history.map((h) => ({
+    dn: h.dn,
+    date: h.date,
+    driver: h.driver,
+    delivered: h.delivered,
+    notes: h.notes,
+  }));
+
+  // حدّث summary
+  orderSummaryByNo[currentOrderNo] = data.summary;
+
+  return data;
+}
+
 function nextDN(orderNo) {
   const arr = deliveryNotes[orderNo] || [];
   const n = arr.length + 1;
@@ -472,7 +504,7 @@ async function openOrder(orderNo) {
 tabGrouped.addEventListener("click", () => setView("grouped"));
 tabPieces.addEventListener("click", () => setView("pieces"));
 
-// ===== Grouped: selection + confirm (ما زال front-end فقط) =====
+// ===== Grouped: selection + confirm =====
 function getQtyInputs() {
   return Array.from(groupBody.querySelectorAll("input[data-qty]"));
 }
@@ -505,82 +537,49 @@ resetQtyBtn.addEventListener("click", () => {
   groupMsg.textContent = "Quantities reset.";
 });
 
-// NOTE: لسه هالجزء يعدّل على البيانات في الواجهة فقط، مش في DB
-function deliverByGroupedQty(orderNo) {
-  const all = piecesByOrder[orderNo] || [];
-  const inputs = getQtyInputs();
-
-  const qtyByGroup = {};
-  for (const inp of inputs) {
-    const key = inp.dataset.qty;
-    const qty = safeNum(inp.value);
-    if (qty > 0) qtyByGroup[key] = qty;
-  }
-
-  const selectedTotal = Object.values(qtyByGroup).reduce((a, b) => a + b, 0);
-  if (selectedTotal <= 0) {
-    return { ok: false, msg: "No quantities selected. Enter qty to deliver." };
-  }
-
-  let deliveredNow = 0;
-
-  for (const [key, qty] of Object.entries(qtyByGroup)) {
-    const readyPieces = all
-      .filter((p) => p.status === "ready" && groupKeyOf(p) === key)
-      .sort((a, b) => a.glassNo.localeCompare(b.glassNo));
-
-    const take = Math.min(qty, readyPieces.length);
-
-    if (take < qty) {
-      return {
-        ok: false,
-        msg: `Qty too high for a group. Available READY is ${readyPieces.length}.`,
-      };
-    }
-
-    for (let i = 0; i < take; i++) {
-      readyPieces[i].status = "delivered";
-      readyPieces[i].currentStage = "Delivered";
-      deliveredNow++;
-    }
-  }
-
-  return { ok: true, deliveredNow };
-}
-
-confirmGroupedBtn.addEventListener("click", () => {
+confirmGroupedBtn.addEventListener("click", async () => {
   if (!currentOrderNo) return;
 
-  const res = deliverByGroupedQty(currentOrderNo);
+  // Build groups payload
+  const groups = [];
+  const inputs = getQtyInputs();
 
-  if (!res.ok) {
+  inputs.forEach((inp) => {
+    const qty = safeNum(inp.value);
+    if (!qty) return;
+
+    const key = inp.dataset.qty; // line|size|type
+    const [line, size, type] = key.split("|");
+    groups.push({ line, size, type, qty });
+  });
+
+  if (!groups.length) {
     groupMsg.className = "station-status-message error";
-    groupMsg.textContent = res.msg;
+    groupMsg.textContent =
+      "No quantities selected. Enter qty to deliver then confirm.";
     return;
   }
 
-  const dn = dnInput.value || nextDN(currentOrderNo);
-  if (!deliveryNotes[currentOrderNo]) deliveryNotes[currentOrderNo] = [];
-  deliveryNotes[currentOrderNo].push({
-    dn,
-    date: nowString(),
-    driver: (driverInput.value || "").trim(),
-    delivered: res.deliveredNow,
-    notes: (notesInput.value || "").trim(),
-  });
+  try {
+    groupMsg.className = "station-status-message info";
+    groupMsg.textContent = "Submitting delivery note…";
 
-  groupMsg.className = "station-status-message success";
-  groupMsg.textContent = `✅ ${dn} confirmed. Delivered ${res.deliveredNow} piece(s).`;
+    const data = await submitDelivery("grouped", { groups });
 
-  // refresh UI (داخل session فقط)
-  updatePanelHeader(currentOrderNo);
-  renderGrouped(currentOrderNo);
-  renderPieces(currentOrderNo);
-  renderHistory(currentOrderNo);
-  renderOrders();
+    groupMsg.className = "station-status-message success";
+    groupMsg.textContent = `✅ ${data.dnNo} confirmed. Delivered ${data.deliveredNow} piece(s).`;
+
+    // أعد تحميل تفاصيل الطلب + لستة الأوامر
+    await openOrder(currentOrderNo);
+    await loadOrders();
+  } catch (err) {
+    console.error("confirmGrouped error:", err);
+    groupMsg.className = "station-status-message error";
+    groupMsg.textContent = err.message || "Error confirming delivery.";
+  }
 });
 
-// ===== Pieces: selection + confirm (front-end فقط) =====
+// ===== Pieces: selection + confirm =====
 function getSelectedPieces() {
   return Array.from(
     piecesBody.querySelectorAll("input[data-select]:checked")
@@ -604,7 +603,7 @@ clearPiecesBtn.addEventListener("click", () => {
   piecesMsg.textContent = "Selection cleared.";
 });
 
-confirmPiecesBtn.addEventListener("click", () => {
+confirmPiecesBtn.addEventListener("click", async () => {
   if (!currentOrderNo) return;
 
   const selected = getSelectedPieces();
@@ -615,37 +614,23 @@ confirmPiecesBtn.addEventListener("click", () => {
     return;
   }
 
-  const all = piecesByOrder[currentOrderNo] || [];
-  let deliveredNow = 0;
+  try {
+    piecesMsg.className = "station-status-message info";
+    piecesMsg.textContent = "Submitting delivery note…";
 
-  for (const g of selected) {
-    const p = all.find((x) => x.glassNo === g);
-    if (p && p.status === "ready") {
-      p.status = "delivered";
-      p.currentStage = "Delivered";
-      deliveredNow++;
-    }
+    const data = await submitDelivery("pieces", { pieces: selected });
+
+    piecesMsg.className = "station-status-message success";
+    piecesMsg.textContent = `✅ ${data.dnNo} confirmed. Delivered ${data.deliveredNow} piece(s).`;
+
+    await openOrder(currentOrderNo);
+    await loadOrders();
+    updateSelectedPiecesCount();
+  } catch (err) {
+    console.error("confirmPieces error:", err);
+    piecesMsg.className = "station-status-message error";
+    piecesMsg.textContent = err.message || "Error confirming delivery.";
   }
-
-  const dn = dnInput.value || nextDN(currentOrderNo);
-  if (!deliveryNotes[currentOrderNo]) deliveryNotes[currentOrderNo] = [];
-  deliveryNotes[currentOrderNo].push({
-    dn,
-    date: nowString(),
-    driver: (driverInput.value || "").trim(),
-    delivered: deliveredNow,
-    notes: (notesInput.value || "").trim(),
-  });
-
-  piecesMsg.className = "station-status-message success";
-  piecesMsg.textContent = `✅ ${dn} confirmed. Delivered ${deliveredNow} piece(s).`;
-
-  updatePanelHeader(currentOrderNo);
-  renderGrouped(currentOrderNo);
-  renderPieces(currentOrderNo);
-  renderHistory(currentOrderNo);
-  renderOrders();
-  updateSelectedPiecesCount();
 });
 
 // ===== Track modal (piece) =====

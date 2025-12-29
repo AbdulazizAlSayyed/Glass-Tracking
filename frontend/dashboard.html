@@ -157,7 +157,9 @@
                     <div class="stat-card">
                         <div class="stat-label">Broken today</div>
                         <div class="stat-value" id="kpiBrokenToday">0</div>
-                        <div class="stat-chip" style="background:#fee2e2; color:#b91c1c;">Track reasons</div>
+                        <div class="stat-chip" style="background:#fee2e2; color:#b91c1c;">
+                            Track reasons
+                        </div>
                     </div>
 
                     <div class="stat-card">
@@ -165,8 +167,23 @@
                         <div class="stat-value" id="kpiDeliveryReady">0</div>
                         <div class="stat-chip">Completed orders</div>
                     </div>
+
+                    <!-- 🔵 جديدة: عدد القطع المسلّمة اليوم -->
+                    <div class="stat-card">
+                        <div class="stat-label">Pieces delivered today</div>
+                        <div class="stat-value" id="kpiDeliveredPiecesToday">0</div>
+                        <div class="stat-chip">From delivery notes</div>
+                    </div>
+
+                    <!-- 🔵 جديدة: عدد الـ Orders اللي صار لها Delivery اليوم (حتى لو partial) -->
+                    <div class="stat-card">
+                        <div class="stat-label">Orders with delivery today</div>
+                        <div class="stat-value" id="kpiDeliveredOrdersToday">0</div>
+                        <div class="stat-chip">Any delivery today</div>
+                    </div>
                 </div>
             </section>
+
 
             <!-- Urgent actions -->
             <section class="card">

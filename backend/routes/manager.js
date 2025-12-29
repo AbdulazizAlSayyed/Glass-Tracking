@@ -1,5 +1,7 @@
+// routes/manager.js
 const router = require("express").Router();
 const pool = require("../db");
+const { authRequired } = require("../middleware/auth");
 
 // ---------- helpers ----------
 function toDateString(d) {
@@ -16,12 +18,12 @@ function toTimeString(d) {
 }
 
 // GET /api/manager/dashboard
-router.get("/dashboard", async (req, res, next) => {
+router.get("/dashboard", authRequired, async (req, res, next) => {
   let conn;
   try {
     conn = await pool.getConnection();
 
-    // 1) Last 50 orders + total pieces
+    // 1) آخر 50 order مع عدد القطع
     const [orderRows] = await conn.execute(`
       SELECT
         o.id,
@@ -38,28 +40,35 @@ router.get("/dashboard", async (req, res, next) => {
         FROM glass_pieces
         GROUP BY order_id
       ) p ON p.order_id = o.id
+      WHERE o.status <> 'Cancelled'
       ORDER BY o.created_at DESC
       LIMIT 50
     `);
 
-    // 2) Completed pieces per order (for progress %)
+    // 2) Progress + Ready + Delivered لكل order
     const [progressRows] = await conn.execute(`
       SELECT
         order_id,
         COUNT(*) AS total_pieces,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_pieces
+        SUM(status IN ('completed','COMPLETED')) AS completed_pieces,
+        SUM(status IN ('ready','READY','completed','COMPLETED','ready_for_delivery')) AS ready_pieces,
+        SUM(status IN ('delivered','DELIVERED')) AS delivered_pieces
       FROM glass_pieces
       GROUP BY order_id
     `);
+
     const progressMap = new Map();
     for (const r of progressRows) {
-      progressMap.set(Number(r.order_id), {
+      const orderId = Number(r.order_id);
+      progressMap.set(orderId, {
         total: Number(r.total_pieces || 0),
         completed: Number(r.completed_pieces || 0),
+        ready: Number(r.ready_pieces || 0),
+        delivered: Number(r.delivered_pieces || 0),
       });
     }
 
-    // 3) "Current stage" per order = station with the most WIP pieces
+    // 3) Current stage per order = station مع أكثر WIP
     const [stagePerOrderRows] = await conn.execute(`
       SELECT
         gp.order_id,
@@ -68,7 +77,7 @@ router.get("/dashboard", async (req, res, next) => {
       FROM glass_pieces gp
       JOIN stations s ON s.id = gp.current_station_id
       WHERE gp.current_station_id IS NOT NULL
-        AND gp.status NOT IN ('completed')  -- broken stays in station, so it can still show in stage stats if you want
+        AND gp.status NOT IN ('completed','COMPLETED')
       GROUP BY gp.order_id, s.id, s.name
     `);
     const stagePerOrderMap = new Map();
@@ -83,7 +92,7 @@ router.get("/dashboard", async (req, res, next) => {
       }
     }
 
-    // 4) Broken today per order (from piece_events)
+    // 4) Broken today per order
     const [brokenPerOrderRows] = await conn.execute(`
       SELECT
         gp.order_id,
@@ -113,23 +122,32 @@ router.get("/dashboard", async (req, res, next) => {
       lastUpdateMap.set(Number(r.order_id), r.last_update);
     }
 
-    // 6) Stage load (waiting/inProgress are from glass_pieces.status)
-    //    brokenToday from piece_events
+    // 6) Stage load (waiting / in progress + broken today)
     const [stageBaseRows] = await conn.execute(`
       SELECT
         s.id,
         s.name,
         s.stage_order,
-        SUM(CASE
-              WHEN gp.id IS NOT NULL
-               AND gp.status NOT IN ('completed','broken','in_process')
-              THEN 1 ELSE 0
-            END) AS waiting,
-        SUM(CASE
-              WHEN gp.id IS NOT NULL
-               AND gp.status = 'in_process'
-              THEN 1 ELSE 0
-            END) AS in_progress
+        SUM(
+          CASE
+            WHEN gp.id IS NOT NULL
+             AND gp.status NOT IN (
+               'completed','COMPLETED',
+               'broken','BROKEN',
+               'in_process','IN_PROCESS'
+             )
+            THEN 1
+            ELSE 0
+          END
+        ) AS waiting,
+        SUM(
+          CASE
+            WHEN gp.id IS NOT NULL
+             AND gp.status IN ('in_process','IN_PROCESS')
+            THEN 1
+            ELSE 0
+          END
+        ) AS in_progress
       FROM stations s
       LEFT JOIN glass_pieces gp ON gp.current_station_id = s.id
       WHERE s.is_active = 1
@@ -158,10 +176,10 @@ router.get("/dashboard", async (req, res, next) => {
       stage: s.name,
       waiting: Number(s.waiting || 0),
       inProgress: Number(s.in_progress || 0),
-      broken: Number(brokenTodayByStation.get(Number(s.id)) || 0), // broken TODAY
+      broken: Number(brokenTodayByStation.get(Number(s.id)) || 0),
     }));
 
-    // 7) Audit (last 30 events)
+    // 7) Audit (آخر 30 event)
     const [auditRows] = await conn.execute(`
       SELECT
         pe.created_at,
@@ -173,12 +191,37 @@ router.get("/dashboard", async (req, res, next) => {
       FROM piece_events pe
       LEFT JOIN users u ON u.id = pe.user_id
       LEFT JOIN glass_pieces gp ON gp.id = pe.piece_id
-      LEFT JOIN stations s ON s.id = pe.station_id
+      LEFT JOIN stations s ON s.id = gp.current_station_id
       ORDER BY pe.created_at DESC
       LIMIT 30
     `);
 
-    // ---------- Build response for frontend ----------
+    // 8) إحصائيات Delivery اليوم (قطع + أوامر)
+    const [[delPiecesRow]] = await conn.execute(`
+      SELECT
+        COUNT(*) AS delivered_pieces_today
+      FROM piece_events pe
+      WHERE pe.event_type = 'DELIVERED'
+        AND DATE(pe.created_at) = CURDATE()
+    `);
+
+    const [[delOrdersRow]] = await conn.execute(`
+      SELECT
+        COUNT(DISTINCT gp.order_id) AS delivered_orders_today
+      FROM piece_events pe
+      JOIN glass_pieces gp ON gp.id = pe.piece_id
+      WHERE pe.event_type = 'DELIVERED'
+        AND DATE(pe.created_at) = CURDATE()
+    `);
+
+    const deliveredPiecesToday = Number(
+      delPiecesRow?.delivered_pieces_today || 0
+    );
+    const deliveredOrdersToday = Number(
+      delOrdersRow?.delivered_orders_today || 0
+    );
+
+    // ---------- Build response ----------
     const todayIso = toDateString(new Date());
 
     const orders = orderRows.map((o) => {
@@ -193,11 +236,14 @@ router.get("/dashboard", async (req, res, next) => {
       const prog = progressMap.get(orderId) || {
         total: Number(o.total_pieces || 0),
         completed: 0,
+        ready: 0,
+        delivered: 0,
       };
       const totalPieces = Number(prog.total || 0);
-      const completedPieces = Number(prog.completed || 0);
+      const donePieces =
+        Number(prog.completed || 0) + Number(prog.delivered || 0);
       const progressPct = totalPieces
-        ? Math.round((completedPieces / totalPieces) * 100)
+        ? Math.round((donePieces / totalPieces) * 100)
         : 0;
 
       let stage = stagePerOrderMap.get(orderId)?.stage || "—";
@@ -219,7 +265,7 @@ router.get("/dashboard", async (req, res, next) => {
       };
     });
 
-    // KPIs
+    // ========= KPIs =========
     const ordersToday = orders.filter((o) => o.createdToday).length;
     const activeOrders = orders.filter((o) => o.status === "Active").length;
     const draftOrders = orders.filter((o) => o.status === "Draft").length;
@@ -240,7 +286,15 @@ router.get("/dashboard", async (req, res, next) => {
       (o) => o.status === "Completed" && toDateString(o.updated_at) === todayIso
     ).length;
 
-    const deliveryReady = orders.filter((o) => o.status === "Completed").length;
+    // ✅ Delivery ready: orders فيها READY وما فيها Delivered
+    let deliveryReady = 0;
+    for (const o of orderRows) {
+      const prog = progressMap.get(Number(o.id));
+      if (!prog) continue;
+      if (prog.ready > 0 && prog.delivered === 0) {
+        deliveryReady++;
+      }
+    }
 
     const kpis = {
       ordersToday,
@@ -251,9 +305,11 @@ router.get("/dashboard", async (req, res, next) => {
       deliveryReady,
       draftOrders,
       delayedOrders,
+      deliveredPiecesToday,
+      deliveredOrdersToday,
     };
 
-    // Alerts
+    // ========= Alerts =========
     const alerts = [];
     if (delayedOrders > 0) {
       alerts.push({
