@@ -6,11 +6,13 @@ async function main() {
   // 1) Stations
   const stations = [
     ["CUT-01", "Cutting", 1],
-    ["GRD-01", "Grinding", 2],
-    ["WSH-01", "Washing", 3],
-    ["FRN-01", "Furnace", 4],
-    ["PCK-01", "Packing", 5],
-    ["DLV-01", "Delivery", 6],
+    ["EDG-01", "Machine Edging", 2],
+    ["DRL-01", "Drilling", 3],
+    ["TMP-01", "Tempering", 4],
+    ["LAM-01", "Lamination", 5],
+    ["AUT-01", "Autoclave", 6],
+    ["DGL-01", "Double Glazing", 7],
+    ["DLV-01", "Delivery", 8],
   ];
 
   for (const [code, name, order] of stations) {

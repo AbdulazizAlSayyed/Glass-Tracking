@@ -18,6 +18,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initImportOrdersPage(user) {
+  // ✅ Base API (so you can change in one place)
+  const API = {
+    summary: "/api/orders/summary?mine=1",
+    recent: "/api/orders/recent?mine=1&limit=10",
+    listOrders: "/api/orders",
+    preview: "/api/orders/import/preview",
+    createDraft: "/api/orders/import",
+  };
+
   const els = {
     // Header / logout
     userChip: document.getElementById("userChip"),
@@ -77,8 +86,12 @@ function initImportOrdersPage(user) {
     modalCloseBtn: document.getElementById("modalCloseBtn"),
   };
 
-  if (els.userChip)
+  if (els.userChip) {
     els.userChip.textContent = `User: ${user.username} (${user.role})`;
+  }
+
+  // ✅ Disable create draft until preview successful
+  if (els.createDraftBtn) els.createDraftBtn.disabled = true;
 
   // ---------- helpers ----------
   function esc(s) {
@@ -133,6 +146,7 @@ function initImportOrdersPage(user) {
 
   function setChecks(warnings) {
     if (!els.checksBox) return;
+
     if (!warnings || warnings.length === 0) {
       els.checksBox.className = "station-status-message success";
       els.checksBox.textContent = "No warnings ✅ All checks passed";
@@ -173,12 +187,18 @@ function initImportOrdersPage(user) {
     window.location.replace("index.html");
   }
 
+  function validateFormForPreview() {
+    const file = getFile();
+    if (!file) return "Please select a file first";
+    if (!els.orderNo?.value.trim()) return "Please enter order number";
+    if (!els.client?.value.trim()) return "Please enter client name";
+    return null;
+  }
+
   // ---------- API loaders ----------
   async function loadSummary() {
     try {
-      const res = await fetch("/api/orders/summary?mine=1", {
-        headers: authHeaders(),
-      });
+      const res = await fetch(API.summary, { headers: authHeaders() });
       if (res.status === 401) return handle401();
       const data = await safeJson(res);
       if (!res.ok || !data.ok) return;
@@ -208,7 +228,7 @@ function initImportOrdersPage(user) {
   async function loadRecent() {
     if (!els.recentBody) return;
     try {
-      const res = await fetch("/api/orders/recent?mine=1&limit=10", {
+      const res = await fetch(API.recent, {
         headers: authHeaders(),
         cache: "no-store",
       });
@@ -216,17 +236,13 @@ function initImportOrdersPage(user) {
       const data = await safeJson(res);
 
       if (!res.ok || !data.ok) {
-        els.recentBody.innerHTML = `
-          <tr><td colspan="6" style="color:#dc2626; padding:12px;">Failed to load recent orders</td></tr>
-        `;
+        els.recentBody.innerHTML = `<tr><td colspan="6" style="color:#dc2626; padding:12px;">Failed to load recent orders</td></tr>`;
         return;
       }
 
       const orders = data.orders || [];
       if (!orders.length) {
-        els.recentBody.innerHTML = `
-          <tr><td colspan="6" style="color:#6b7280; padding:14px; text-align:center;">No recent orders</td></tr>
-        `;
+        els.recentBody.innerHTML = `<tr><td colspan="6" style="color:#6b7280; padding:14px; text-align:center;">No recent orders</td></tr>`;
         return;
       }
 
@@ -262,22 +278,25 @@ function initImportOrdersPage(user) {
   }
 
   // ---------- Import / preview ----------
+  let lastPreviewFormData = null; // ✅ store for Create Draft
+  let lastPreviewOk = false;
+
   async function doPreview() {
-    const file = getFile();
-    if (!file) return setStatus("Please select a file first", "error");
-    if (!els.orderNo?.value.trim())
-      return setStatus("Please enter order number", "error");
-    if (!els.client?.value.trim())
-      return setStatus("Please enter client name", "error");
+    const err = validateFormForPreview();
+    if (err) return setStatus(err, "error");
 
     setStatus("Uploading file for preview...", "info");
     els.previewBtn.disabled = true;
+    if (els.createDraftBtn) els.createDraftBtn.disabled = true;
+    lastPreviewOk = false;
+    lastPreviewFormData = null;
 
     try {
-      const res = await fetch("/api/orders/import/preview", {
+      const fd = buildFormData();
+      const res = await fetch(API.preview, {
         method: "POST",
         headers: formDataHeaders(),
-        body: buildFormData(),
+        body: fd,
       });
       if (res.status === 401) return handle401();
       const data = await safeJson(res);
@@ -314,6 +333,10 @@ function initImportOrdersPage(user) {
         });
       }
 
+      lastPreviewFormData = fd;
+      lastPreviewOk = true;
+      if (els.createDraftBtn) els.createDraftBtn.disabled = false;
+
       setStatus("Preview ready ✅ Click 'Create Draft' to save", "success");
       els.previewCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (e) {
@@ -325,6 +348,13 @@ function initImportOrdersPage(user) {
   }
 
   async function createDraft() {
+    if (!lastPreviewOk || !lastPreviewFormData) {
+      return setStatus(
+        "Please preview first before creating draft.",
+        "warning"
+      );
+    }
+
     if (
       !confirm("Create draft order? This will save the order to the database.")
     )
@@ -334,11 +364,12 @@ function initImportOrdersPage(user) {
     els.createDraftBtn.disabled = true;
 
     try {
-      const res = await fetch("/api/orders/import", {
+      const res = await fetch(API.createDraft, {
         method: "POST",
         headers: formDataHeaders(),
-        body: buildFormData(),
+        body: lastPreviewFormData, // ✅ use same form data as preview
       });
+
       if (res.status === 401) return handle401();
       const data = await safeJson(res);
 
@@ -347,7 +378,11 @@ function initImportOrdersPage(user) {
         return;
       }
 
-      setStatus(`Draft created ✅ Order #${data.order.orderNo}`, "success");
+      setStatus(
+        `Draft created ✅ Order #${data.order?.orderNo || "—"}`,
+        "success"
+      );
+
       resetForm();
       await Promise.all([
         loadSummary(),
@@ -358,7 +393,10 @@ function initImportOrdersPage(user) {
       console.error("createDraft error:", e);
       setStatus("Network error. Please try again.", "error");
     } finally {
-      els.createDraftBtn.disabled = false;
+      // keep disabled until new preview
+      els.createDraftBtn.disabled = true;
+      lastPreviewOk = false;
+      lastPreviewFormData = null;
     }
   }
 
@@ -374,10 +412,14 @@ function initImportOrdersPage(user) {
     if (els.previewBody) els.previewBody.innerHTML = "";
     if (els.checksBox) els.checksBox.textContent = "No checks yet.";
 
+    if (els.createDraftBtn) els.createDraftBtn.disabled = true;
+    lastPreviewOk = false;
+    lastPreviewFormData = null;
+
     setStatus("Form reset. Ready.", "info");
   }
 
-  // ---------- All Orders (Detailed) ----------
+  // ---------- All Orders ----------
   let currentAllOrdersPage = 1;
   let allOrdersPageSize = parseInt(els.allOrdersPageSize?.value || "10", 10);
   let totalAllOrders = 0;
@@ -393,12 +435,11 @@ function initImportOrdersPage(user) {
         page: String(page),
         limit: String(pageSize),
       });
-
       if (status && status !== "all") params.set("status", status);
       if (client) params.set("client", client);
       if (orderNo) params.set("orderNo", orderNo);
 
-      const res = await fetch(`/api/orders?${params.toString()}`, {
+      const res = await fetch(`${API.listOrders}?${params.toString()}`, {
         headers: authHeaders(),
         cache: "no-store",
       });
@@ -526,9 +567,7 @@ function initImportOrdersPage(user) {
           <div class="table-wrapper" style="max-height:280px; overflow:auto; margin-top:10px;">
             <table class="table">
               <thead>
-                <tr>
-                  <th>Line Code</th><th>Qty</th><th>Size</th><th>Type</th><th>Notes</th>
-                </tr>
+                <tr><th>Line Code</th><th>Qty</th><th>Size</th><th>Type</th><th>Notes</th></tr>
               </thead>
               <tbody>
                 ${lines
@@ -540,14 +579,12 @@ function initImportOrdersPage(user) {
                     <td>${esc(l.size || "—")}</td>
                     <td>${esc(l.glass_type || "—")}</td>
                     <td>${esc(l.notes || "—")}</td>
-                  </tr>
-                `
+                  </tr>`
                   )
                   .join("")}
               </tbody>
             </table>
-          </div>
-        `
+          </div>`
         : `<div style="margin-top:14px; color:#6b7280;">No lines</div>`;
 
       const piecesHtml = pieces.length
@@ -556,9 +593,7 @@ function initImportOrdersPage(user) {
           <div class="table-wrapper" style="max-height:220px; overflow:auto; margin-top:10px;">
             <table class="table">
               <thead>
-                <tr>
-                  <th>Piece</th><th>Status</th><th>Station</th><th>Broken Notes</th>
-                </tr>
+                <tr><th>Piece</th><th>Status</th><th>Station</th><th>Broken Notes</th></tr>
               </thead>
               <tbody>
                 ${pieces
@@ -569,14 +604,12 @@ function initImportOrdersPage(user) {
                     <td>${esc(p.status || "—")}</td>
                     <td>${esc(p.station_name || "—")}</td>
                     <td>${esc(p.broken_notes || "—")}</td>
-                  </tr>
-                `
+                  </tr>`
                   )
                   .join("")}
               </tbody>
             </table>
-          </div>
-        `
+          </div>`
         : `<div style="margin-top:14px; color:#6b7280;">No pieces (tables may not exist yet)</div>`;
 
       const delivery = order.delivery_date
@@ -615,7 +648,7 @@ function initImportOrdersPage(user) {
 
         <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
           ${
-            String(order.status) === "Draft"
+            String(order.status).toLowerCase() === "draft"
               ? `<button class="btn btn-primary" type="button" id="activateBtn">Activate</button>`
               : `<button class="btn btn-ghost" type="button" id="changeStatusBtn">Change Status</button>`
           }
@@ -627,7 +660,6 @@ function initImportOrdersPage(user) {
       if (els.modalContent) els.modalContent.innerHTML = modalHtml;
       if (els.modal) els.modal.style.display = "block";
 
-      // bind modal buttons
       document
         .getElementById("deleteBtn")
         ?.addEventListener("click", () =>
@@ -664,6 +696,7 @@ function initImportOrdersPage(user) {
 
       alert(`Order #${orderNo} deleted ✅`);
       if (closeAfter) closeModal();
+
       await Promise.all([
         loadSummary(),
         loadRecent(),
@@ -685,6 +718,7 @@ function initImportOrdersPage(user) {
       });
       if (res.status === 401) return handle401();
       const data = await safeJson(res);
+
       if (!res.ok || !data.ok)
         throw new Error(data.error || `Failed (${res.status})`);
 
@@ -717,6 +751,7 @@ function initImportOrdersPage(user) {
       });
       if (res.status === 401) return handle401();
       const data = await safeJson(res);
+
       if (!res.ok || !data.ok)
         throw new Error(data.error || `Failed (${res.status})`);
 
@@ -756,6 +791,7 @@ function initImportOrdersPage(user) {
   els.previewBtn?.addEventListener("click", doPreview);
   els.createDraftBtn?.addEventListener("click", createDraft);
   els.resetBtn?.addEventListener("click", resetForm);
+
   els.closePreviewBtn?.addEventListener("click", () => {
     els.previewCard.style.display = "none";
     setStatus("Preview closed.", "info");
@@ -772,10 +808,10 @@ function initImportOrdersPage(user) {
   els.refreshOrdersBtn?.addEventListener("click", () =>
     loadAllOrders(1, allOrdersPageSize)
   );
-
   els.statusFilter?.addEventListener("change", () =>
     loadAllOrders(1, allOrdersPageSize)
   );
+
   els.clientSearch?.addEventListener(
     "input",
     debounce(() => loadAllOrders(1, allOrdersPageSize), 400)
@@ -789,16 +825,17 @@ function initImportOrdersPage(user) {
     if (currentAllOrdersPage > 1)
       loadAllOrders(currentAllOrdersPage - 1, allOrdersPageSize);
   });
+
   els.allOrdersNextBtn?.addEventListener("click", () => {
     if (currentAllOrdersPage < totalAllPages)
       loadAllOrders(currentAllOrdersPage + 1, allOrdersPageSize);
   });
+
   els.allOrdersPageSize?.addEventListener("change", () => {
     allOrdersPageSize = parseInt(els.allOrdersPageSize.value, 10);
     loadAllOrders(1, allOrdersPageSize);
   });
 
-  // table row actions (view/delete)
   els.allOrdersBody?.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;

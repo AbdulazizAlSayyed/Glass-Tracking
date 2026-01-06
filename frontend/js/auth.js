@@ -1,19 +1,23 @@
 /* ================================
-   js/auth.js (UPDATED / SINGLE SOURCE)
-   - Works for: index.html login + all protected pages (activation, plan-intake, etc.)
-   - Fixes the big issue: DON'T force-redirect by homePage (so plan-intake.html won’t bounce back)
-   - Still supports optional role/page restrictions if you want later
+   js/auth.js (FINAL / SINGLE SOURCE)
+   - Handles: login, logout, auth guard, redirects
+   - No conflicts with login.js / logout.js / redirection.js
 ================================ */
 
 // =============================
 // 1) Helpers
 // =============================
 function getBasePath() {
-  const pathParts = window.location.pathname.split("/");
-  const fileName = window.location.pathname.split("/").pop();
-  if (fileName && fileName.includes(".html")) pathParts.pop();
-  const base = pathParts.filter(Boolean).join("/");
-  return base ? "/" + base + "/" : "/";
+  // Examples:
+  // /index.html              -> /
+  // /frontend/index.html     -> /frontend/
+  const parts = window.location.pathname.split("/").filter(Boolean);
+
+  // If last part looks like a file, remove it
+  const last = parts[parts.length - 1] || "";
+  if (last.endsWith(".html")) parts.pop();
+
+  return "/" + (parts.length ? parts.join("/") + "/" : "");
 }
 
 function getToken() {
@@ -55,25 +59,23 @@ function getAuthHeaders(extra = {}) {
 }
 
 function isAuthenticated() {
-  const token = getToken();
-  const user = getCurrentUser();
-  return !!(token && user);
+  return !!(getToken() && getCurrentUser());
 }
 
-// Optional (future): role/page restrictions
-// If you don't want restrictions, keep this as empty object.
+// =============================
+// 2) Optional: Role / Page rules
+//    (اتركها فاضية حالياً لتفادي أي Redirects غلط)
+// =============================
 const ROLE_ALLOWED_PAGES = {
-  // مثال (عدّلها إذا بدك):
-  // admin: ["dashboard.html", "orders.html", "activation.html", "plan-intake.html", "live-tracking.html"],
+  // مثال إذا بدك لاحقاً:
+  // admin: ["dashboard.html", "orders.html", "activation.html", "live-tracking.html"],
   // intake: ["activation.html", "plan-intake.html"],
   // station: ["station.html"]
 };
 
-// Extra allowed pages by "flow" (important for activation -> plan-intake)
+// صفحات إضافية مسموحة حسب الـ flow (مثلاً activation → plan-intake)
 const HOME_FLOW_ALLOW = {
   "activation.html": ["plan-intake.html"],
-  // add more flows if needed
-  // "orders.html": ["order-details.html"]
 };
 
 function isPageAllowedForUser(user, currentPage) {
@@ -83,10 +85,8 @@ function isPageAllowedForUser(user, currentPage) {
   const role = String(user.role || "").toLowerCase();
   const home = String(user.homePage || "").toLowerCase();
 
-  // If role rules exist → enforce them
   const roleList = ROLE_ALLOWED_PAGES[role];
   if (Array.isArray(roleList) && roleList.length) {
-    // also allow homePage + flow pages automatically
     const flowExtra = HOME_FLOW_ALLOW[home] || [];
     const allowed = new Set(
       [...roleList, home, ...flowExtra]
@@ -96,13 +96,12 @@ function isPageAllowedForUser(user, currentPage) {
     return allowed.has(page);
   }
 
-  // No role rules → allow all pages when authenticated
-  // (This is what prevents plan-intake redirect problems.)
+  // إذا ما في قواعد → اسمح بكل الصفحات طالما المستخدم مسجّل دخول
   return true;
 }
 
 // =============================
-// 2) Handle logout param EARLY
+// 3) Handle logout param EARLY
 // =============================
 (function () {
   try {
@@ -110,10 +109,9 @@ function isPageAllowedForUser(user, currentPage) {
     if (params.get("logout") === "1") {
       clearAuth();
 
-      // Stay on login page if already there
+      // إذا مش بصفحة اللوجين، رجّع عليها
       if (!isLoginPage()) {
-        const basePath = getBasePath();
-        window.location.replace(basePath + "index.html?logout=1");
+        window.location.replace(getBasePath() + "index.html?logout=1");
       }
     }
   } catch (e) {
@@ -122,23 +120,21 @@ function isPageAllowedForUser(user, currentPage) {
 })();
 
 // =============================
-// 3) Auto-redirect if already logged in (only on login page)
+// 4) Auto-redirect if already logged in (ONLY on login page)
 // =============================
 (function () {
   try {
     if (!isLoginPage()) return;
 
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logout") === "1") return; // لا تعيد التوجيه بعد logout
+
     const token = getToken();
     const user = getCurrentUser();
 
-    // IMPORTANT: if logout=1, do not redirect
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("logout") === "1") return;
-
     if (token && user) {
-      const basePath = getBasePath();
       const home = user.homePage || "dashboard.html";
-      window.location.replace(basePath + home);
+      window.location.replace(getBasePath() + home);
     }
   } catch (e) {
     console.warn("Auth redirect error:", e);
@@ -146,15 +142,14 @@ function isPageAllowedForUser(user, currentPage) {
 })();
 
 // =============================
-// 4) Protect non-login pages automatically
+// 5) Protect non-login pages automatically
 // =============================
 function protectPage() {
   if (isLoginPage()) return true;
 
   if (!isAuthenticated()) {
     clearAuth();
-    const basePath = getBasePath();
-    window.location.replace(basePath + "index.html?logout=1");
+    window.location.replace(getBasePath() + "index.html?logout=1");
     return false;
   }
 
@@ -164,9 +159,8 @@ function protectPage() {
   ).toLowerCase();
 
   if (!isPageAllowedForUser(user, currentPage)) {
-    const basePath = getBasePath();
     const home = user?.homePage || "dashboard.html";
-    window.location.replace(basePath + home);
+    window.location.replace(getBasePath() + home);
     return false;
   }
 
@@ -174,7 +168,7 @@ function protectPage() {
 }
 
 // =============================
-// 5) Login handler
+// 6) Login handler (index.html)
 // =============================
 async function handleLoginSubmit(event) {
   event.preventDefault();
@@ -204,9 +198,8 @@ async function handleLoginSubmit(event) {
   }
 
   try {
-    const basePath = getBasePath();
     const apiUrl = new URL(
-      basePath + "api/auth/login",
+      getBasePath() + "api/auth/login",
       window.location.origin
     ).toString();
 
@@ -234,11 +227,13 @@ async function handleLoginSubmit(event) {
       return;
     }
 
+    // Save auth
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
+    // Redirect to home page
     const home = data.user?.homePage || "dashboard.html";
-    window.location.replace(basePath + home);
+    window.location.replace(getBasePath() + home);
   } catch (e) {
     console.error("Login error:", e);
     if (errorEl) {
@@ -254,22 +249,31 @@ async function handleLoginSubmit(event) {
 }
 
 // =============================
-// 6) Logout helper
+// 7) Logout helper
 // =============================
 function doLogout() {
   clearAuth();
-  const basePath = getBasePath();
-  window.location.replace(basePath + "index.html?logout=1");
+  window.location.replace(getBasePath() + "index.html?logout=1");
 }
 
 // =============================
-// 7) DOM Ready init
+// 8) DOM Ready init
 // =============================
 function initAuth() {
   // Protect page (except login page)
   if (!protectPage()) return;
 
-  const user = getCurrentUser();
+  // Show logout success message on login page
+  if (isLoginPage()) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logout") === "1") {
+      const errorEl = document.getElementById("loginError");
+      if (errorEl) {
+        errorEl.style.color = "#16a34a";
+        errorEl.textContent = "Logged out successfully.";
+      }
+    }
+  }
 
   // Hook login form if exists
   const loginForm = document.getElementById("loginForm");
@@ -287,6 +291,7 @@ function initAuth() {
   }
 
   // Fill user chip if exists
+  const user = getCurrentUser();
   const userChip = document.getElementById("userChip");
   if (userChip && user) {
     userChip.textContent = `User: ${user.username || user.name || "—"}`;
@@ -300,7 +305,7 @@ if (document.readyState === "loading") {
 }
 
 // =============================
-// Export to window
+// 9) Export to window (for other scripts)
 // =============================
 window.isAuthenticated = isAuthenticated;
 window.getCurrentUser = getCurrentUser;

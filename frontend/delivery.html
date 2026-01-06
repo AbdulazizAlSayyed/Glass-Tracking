@@ -46,30 +46,7 @@
 <body>
     <div class="app-shell">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon"></div>
-                <span>Glass Tracking</span>
-            </div>
 
-            <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Dashboard</span>
-                </a>
-                <a href="orders.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Orders</span>
-                </a>
-                <a href="live-tracking.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Live Tracking</span>
-                </a>
-                <a href="delivery.html" class="nav-item active">
-                    <div class="nav-item-icon"></div><span>Delivery Out</span>
-                </a>
-                <a href="notifications.html" class="nav-item">
-                    <div class="nav-item-icon"></div><span>Notifications</span>
-                </a>
-            </nav>
-        </aside>
 
         <!-- Main -->
         <main class="main">
@@ -83,6 +60,9 @@
                 <div class="main-header-right">
                     <span class="chip" id="userChip">User: Delivery</span>
                 </div>
+                <button type="button" id="logoutBtn" class="btn btn-ghost" style="padding:6px 10px; font-size:0.8rem;">
+                    Logout
+                </button>
             </header>
 
             <div class="station-status-message info" id="deliveryStatus">
@@ -370,6 +350,7 @@
 
     <!-- Delivery logic -->
     <script src="js/delivery.js"></script>
+    <script src="js/auth.js"></script>
 </body>
 
 </html>

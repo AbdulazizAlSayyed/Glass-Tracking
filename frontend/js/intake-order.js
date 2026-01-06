@@ -59,8 +59,8 @@
   const state = {
     orderId: 0,
     order: null,
-    lines: [],
-    selections: new Map(), // lineId -> { go, activateQty }
+    lines: [], // now: pane-records
+    selections: new Map(), // pane_key -> { go, activateQty }
   };
 
   function renderOrderSummary() {
@@ -77,39 +77,39 @@
       );
   }
 
-  function computeRemaining(line) {
-    const total = Number(line.qty || 0);
-    const activated = Number(line.activated_qty || 0);
-    return Math.max(0, total - activated);
+  function computeRemaining(paneRow) {
+    // backend now returns remaining_panes directly
+    return Math.max(0, Number(paneRow.remaining_panes || 0));
   }
 
   function updateTotals() {
-    let selectedLines = 0;
-    let pieces = 0;
+    let selectedRecords = 0;
+    let panes = 0;
 
-    state.lines.forEach((l) => {
-      const sel = state.selections.get(l.id) || { go: false, activateQty: 0 };
+    state.lines.forEach((r) => {
+      const key = r.pane_key;
+      const sel = state.selections.get(key) || { go: false, activateQty: 0 };
       if (sel.go && sel.activateQty > 0) {
-        selectedLines++;
-        pieces += sel.activateQty;
+        selectedRecords++;
+        panes += sel.activateQty;
       }
     });
 
     if (els.ioTotals) {
-      els.ioTotals.textContent = `Selected lines: ${selectedLines} | Pieces to activate now: ${pieces}`;
+      els.ioTotals.textContent = `Selected records: ${selectedRecords} | Panes to activate now: ${panes}`;
     }
   }
 
-  function renderThicknessOptions() {
+  function renderSpecOptions() {
     const set = new Set();
-    state.lines.forEach((l) => {
-      const t = String(l.glass_type || "").trim();
-      if (t) set.add(t);
+    state.lines.forEach((r) => {
+      const spec = String(r.pane_type || "").trim();
+      if (spec && spec !== "—") set.add(spec);
     });
 
     const list = Array.from(set).sort();
     if (els.ioBulkThicknessSelect) {
-      els.ioBulkThicknessSelect.innerHTML = `<option value="">Activate by thickness…</option>`;
+      els.ioBulkThicknessSelect.innerHTML = `<option value="">Activate by spec…</option>`;
       list.forEach((t) => {
         const opt = document.createElement("option");
         opt.value = t;
@@ -123,32 +123,46 @@
     if (!els.ioLinesBody) return;
     els.ioLinesBody.innerHTML = "";
 
-    state.lines.forEach((l) => {
-      const remaining = computeRemaining(l);
+    state.lines.forEach((r) => {
+      const remaining = computeRemaining(r);
+      const key = r.pane_key;
 
-      if (!state.selections.has(l.id)) {
-        state.selections.set(l.id, { go: false, activateQty: 0 });
+      if (!state.selections.has(key)) {
+        state.selections.set(key, { go: false, activateQty: 0 });
       }
+
+      const activated = Number(r.activated_panes || 0);
+      const needed = Number(r.needed_panes || 0);
+
+      // ✅ Type/Size cell: top = pane_type, bottom = size (REAL)
+      const typeLine = esc(r.pane_type || "—");
+      const sizeLine = esc(r.size || "—");
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${esc(l.id)}</td>
-        <td>${esc(l.line_code || "—")}</td>
-        <td>${esc(l.glass_type || l.size || l.notes || "—")}</td>
-        <td>${Number(l.qty || 0)}</td>
-        <td>${Number(l.activated_qty || 0)}</td>
+        <td>${esc(r.line_id)}</td>
+        <td>${esc(r.line_code || "—")}</td>
+        <td>
+          <div style="font-weight:700;">${typeLine}</div>
+          <div style="color:#64748b; font-size:0.85rem; margin-top:2px;">${sizeLine}</div>
+        </td>
+        <td>${Number(r.qty_units || 0)}</td>
+        <td>
+          <div style="font-weight:600;">${activated} / ${needed}</div>
+          <div style="color:#64748b; font-size:0.8rem;">Activated panes / Needed panes</div>
+        </td>
         <td style="min-width:160px;">
           <input type="number" class="input" style="max-width:140px;"
                  min="0" max="${remaining}"
                  value="0"
-                 data-qty="${l.id}"
+                 data-qty="${esc(key)}"
                  placeholder="0..${remaining}" />
           <div style="color:#6b7280; font-size:0.72rem; margin-top:4px;">
             Remaining: ${remaining}
           </div>
         </td>
         <td>
-          <input type="checkbox" data-go="${l.id}" />
+          <input type="checkbox" data-go="${esc(key)}" />
         </td>
       `;
       els.ioLinesBody.appendChild(tr);
@@ -164,19 +178,19 @@
       const inp = e.target.closest("[data-qty]");
       if (!inp) return;
 
-      const lineId = Number(inp.getAttribute("data-qty"));
-      const line = state.lines.find((x) => Number(x.id) === lineId);
-      if (!line) return;
+      const key = String(inp.getAttribute("data-qty") || "");
+      const row = state.lines.find((x) => String(x.pane_key) === key);
+      if (!row) return;
 
-      const remaining = computeRemaining(line);
+      const remaining = computeRemaining(row);
       let v = parseInt(inp.value || "0", 10);
       if (!Number.isFinite(v) || v < 0) v = 0;
       if (v > remaining) v = remaining;
       inp.value = String(v);
 
-      const sel = state.selections.get(lineId) || { go: false, activateQty: 0 };
+      const sel = state.selections.get(key) || { go: false, activateQty: 0 };
       sel.activateQty = v;
-      state.selections.set(lineId, sel);
+      state.selections.set(key, sel);
 
       updateTotals();
     });
@@ -185,22 +199,28 @@
       const cb = e.target.closest("[data-go]");
       if (!cb) return;
 
-      const lineId = Number(cb.getAttribute("data-go"));
-      const sel = state.selections.get(lineId) || { go: false, activateQty: 0 };
+      const key = String(cb.getAttribute("data-go") || "");
+      const sel = state.selections.get(key) || { go: false, activateQty: 0 };
       sel.go = cb.checked;
-      state.selections.set(lineId, sel);
+      state.selections.set(key, sel);
 
       updateTotals();
     });
   }
 
   function bulkActivateAllRemaining() {
-    state.lines.forEach((l) => {
-      const remaining = computeRemaining(l);
-      state.selections.set(l.id, { go: remaining > 0, activateQty: remaining });
+    state.lines.forEach((r) => {
+      const remaining = computeRemaining(r);
+      const key = r.pane_key;
 
-      const qtyInp = els.ioLinesBody?.querySelector(`[data-qty="${l.id}"]`);
-      const goCb = els.ioLinesBody?.querySelector(`[data-go="${l.id}"]`);
+      state.selections.set(key, { go: remaining > 0, activateQty: remaining });
+
+      const qtyInp = els.ioLinesBody?.querySelector(
+        `[data-qty="${CSS.escape(key)}"]`
+      );
+      const goCb = els.ioLinesBody?.querySelector(
+        `[data-go="${CSS.escape(key)}"]`
+      );
       if (qtyInp) qtyInp.value = String(remaining);
       if (goCb) goCb.checked = remaining > 0;
     });
@@ -208,19 +228,25 @@
     updateTotals();
   }
 
-  function bulkActivateByThickness() {
+  function bulkActivateBySpec() {
     const t = String(els.ioBulkThicknessSelect?.value || "").trim();
     if (!t) return;
 
-    state.lines.forEach((l) => {
-      const same = String(l.glass_type || "").trim() === t;
-      const remaining = computeRemaining(l);
+    state.lines.forEach((r) => {
+      const same = String(r.pane_type || "").trim() === t;
+      const remaining = computeRemaining(r);
       const go = same && remaining > 0;
 
-      state.selections.set(l.id, { go, activateQty: go ? remaining : 0 });
+      const key = r.pane_key;
 
-      const qtyInp = els.ioLinesBody?.querySelector(`[data-qty="${l.id}"]`);
-      const goCb = els.ioLinesBody?.querySelector(`[data-go="${l.id}"]`);
+      state.selections.set(key, { go, activateQty: go ? remaining : 0 });
+
+      const qtyInp = els.ioLinesBody?.querySelector(
+        `[data-qty="${CSS.escape(key)}"]`
+      );
+      const goCb = els.ioLinesBody?.querySelector(
+        `[data-go="${CSS.escape(key)}"]`
+      );
       if (qtyInp) qtyInp.value = String(go ? remaining : 0);
       if (goCb) goCb.checked = go;
     });
@@ -230,7 +256,7 @@
 
   async function loadLines() {
     try {
-      setStatus("Loading lines…", "info");
+      setStatus("Loading records…", "info");
 
       const res = await fetch(`/api/intake/orders/${state.orderId}/lines`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -246,33 +272,42 @@
       }
 
       if (!res.ok || !data.ok) {
-        setStatus(`Failed to load lines: ${data.error || res.status}`, "error");
+        setStatus(`Failed to load: ${data.error || res.status}`, "error");
         if (els.ioLinesBody) {
-          els.ioLinesBody.innerHTML = `<tr><td colspan="7" style="color:#dc2626; padding:12px;">Failed to load lines.</td></tr>`;
+          els.ioLinesBody.innerHTML = `<tr><td colspan="7" style="color:#dc2626; padding:12px;">Failed to load.</td></tr>`;
         }
         return;
       }
 
       state.lines = data.lines || [];
-      renderThicknessOptions();
+      renderSpecOptions();
       renderLines();
-      setStatus("Select lines + qty then click Send to Factory.", "success");
+      setStatus("Select records + qty then click Send to Factory.", "success");
     } catch (e) {
       console.error(e);
-      setStatus("Exception while loading lines.", "error");
+      setStatus("Exception while loading records.", "error");
     }
   }
 
   async function activate() {
     const lines = [];
-    state.lines.forEach((l) => {
-      const sel = state.selections.get(l.id);
+
+    state.lines.forEach((r) => {
+      const key = r.pane_key;
+      const sel = state.selections.get(key);
       if (!sel || !sel.go || sel.activateQty <= 0) return;
-      lines.push({ lineId: l.id, activateQty: sel.activateQty, go: true });
+
+      lines.push({
+        lineId: r.line_id,
+        paneLabel: r.pane_label, // "A" | "B" | null
+        paneType: r.pane_type, // "6 MM F GRAY" etc
+        activateQty: sel.activateQty,
+        go: true,
+      });
     });
 
     if (!lines.length) {
-      setStatus("Select at least 1 line and quantity.", "error");
+      setStatus("Select at least 1 record and quantity.", "error");
       return;
     }
 
@@ -298,11 +333,10 @@
     }
 
     setStatus(
-      `Done ✅ Created pieces: ${Number(data.createdPieces || 0)}`,
+      `Done ✅ Created panes: ${Number(data.createdPieces || 0)}`,
       "success"
     );
 
-    // ✅ رجّعك على intake بعد 700ms
     setTimeout(() => {
       window.location.href = "activation.html";
     }, 700);
@@ -324,7 +358,7 @@
     bindTableHandlers();
 
     els.ioBulkAllBtn?.addEventListener("click", bulkActivateAllRemaining);
-    els.ioBulkThicknessBtn?.addEventListener("click", bulkActivateByThickness);
+    els.ioBulkThicknessBtn?.addEventListener("click", bulkActivateBySpec);
     els.ioActivateBtn?.addEventListener("click", activate);
 
     loadLines();

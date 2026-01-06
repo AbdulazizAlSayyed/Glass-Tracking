@@ -90,6 +90,49 @@
         <div id="paneByOrder" style="display:none;">
             <div class="field-label">Search order</div>
             <input type="text" class="input" id="orderSearchInput" placeholder="Type order number (e.g. 580)" />
+            <!-- Filters row -->
+            <div class="filters-section" style="margin-top:10px;">
+                <div class="filters-row" style="grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr auto;">
+                    <div class="filter">
+                        <label class="filter-label">Customer</label>
+                        <input class="input" id="customerFilter" placeholder="e.g. Ali / ABC..." />
+                    </div>
+
+                    <div class="filter">
+                        <label class="filter-label">Due</label>
+                        <select class="select" id="dueFilter">
+                            <option value="all">All</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="today">Today</option>
+                            <option value="next7">Next 7 days</option>
+                            <option value="next30">Next 30 days</option>
+                        </select>
+                    </div>
+
+                    <div class="filter">
+                        <label class="filter-label">Pending</label>
+                        <select class="select" id="pendingFilter">
+                            <option value="all">All</option>
+                            <option value="has">Has pending</option>
+                            <option value="none">No pending</option>
+                        </select>
+                    </div>
+
+                    <div class="filter">
+                        <label class="filter-label">Sort</label>
+                        <select class="select" id="sortFilter">
+                            <option value="due_asc">Due ↑</option>
+                            <option value="due_desc">Due ↓</option>
+                            <option value="pending_desc">Pending ↓</option>
+                            <option value="order_asc">Order ↑</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn btn-ghost" id="resetFiltersBtn" type="button">Reset</button>
+                    </div>
+                </div>
+            </div>
 
             <div style="margin-top:10px; font-size:0.8rem; color:#6b7280; margin-bottom:6px;">
                 Orders that currently have pieces in this station:
@@ -151,12 +194,15 @@
                             <th>Glass #</th>
                             <th>Line</th>
                             <th>Size</th>
-                            <th>Type</th>
+                            <th>Thickness</th>
+                            <th>Glass Type</th>
+                            <th>Description</th>
                             <th>Status</th>
                             <th>Done</th>
                             <th>Broken</th>
                         </tr>
                     </thead>
+
                     <tbody id="orderPiecesBody"></tbody>
                 </table>
             </div>

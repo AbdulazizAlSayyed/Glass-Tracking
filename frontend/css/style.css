@@ -1544,3 +1544,60 @@ body {
     padding-bottom: 10px;
   }
 }
+/* ===== Station full width ===== */
+
+.station-body {
+  padding: 18px;
+  align-items: flex-start; /* بدل center */
+}
+
+.station-card {
+  width: min(96vw, 1400px);
+  max-width: 1400px;
+  margin-top: 24px;
+  border-radius: 18px;
+}
+
+/* ===== Modal larger ===== */
+.modal-large {
+  width: min(96vw, 1400px);
+  max-width: 1400px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* خفف المسافات وخلي الجدول أوضح */
+.table th,
+.table td {
+  padding: 10px 12px;
+}
+
+/* Description خليها تتمدّد */
+.table td.desc-col {
+  min-width: 420px;
+  white-space: nowrap;
+}
+
+/* خلي جدول الاوردرات أكبر */
+#paneByOrder .table-wrapper {
+  max-height: 52vh !important;
+}
+
+/* ===== Modal: bigger (almost fullscreen) ===== */
+.modal-large {
+  width: min(1400px, 98vw) !important;
+  max-width: 98vw !important;
+  max-height: 88vh !important;
+}
+
+#orderModal .modal {
+  display: flex;
+  flex-direction: column;
+}
+
+#orderModal .table-wrapper {
+  max-height: 62vh !important;
+  overflow: auto;
+}

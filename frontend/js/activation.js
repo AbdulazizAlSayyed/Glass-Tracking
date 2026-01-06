@@ -1,12 +1,22 @@
 // frontend/js/activation.js
 (() => {
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+  // ✅ تأكد صفحة محمية (من auth.js)
+  if (typeof window.protectPage === "function") {
+    const ok = window.protectPage();
+    if (!ok) return;
+  }
 
   const els = {
     brokenStatus: document.getElementById("brokenStatus"),
     brokenBody: document.getElementById("brokenBody"),
   };
+
+  // إذا الصفحة ما فيها broken section، خلص
+  if (!els.brokenBody) return;
+
+  // ✅ استخدم نفس basePath تبع auth.js
+  const basePath =
+    typeof window.getBasePath === "function" ? window.getBasePath() : "/";
 
   const esc = (s) =>
     String(s ?? "")
@@ -22,10 +32,31 @@
     els.brokenStatus.className = `station-status-message ${type}`;
   };
 
-  const apiHeaders = () => ({
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  });
+  // ✅ خُد الهيدرز من auth.js
+  function apiHeaders(extra = {}) {
+    if (typeof window.getAuthHeaders === "function") {
+      return window.getAuthHeaders({
+        "Content-Type": "application/json",
+        ...extra,
+      });
+    }
+    // fallback
+    const token = localStorage.getItem("token");
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Content-Type": "application/json",
+      ...extra,
+    };
+  }
+
+  function apiUrl(path) {
+    // basePath مثال: "/"
+    // بدنا نطلع: "/api/activation/broken"
+    return new URL(
+      basePath + path.replace(/^\/+/, ""),
+      window.location.origin
+    ).toString();
+  }
 
   const fmt = (d) => {
     if (!d) return "—";
@@ -34,14 +65,17 @@
     return dt.toISOString().slice(0, 19).replace("T", " ");
   };
 
-  async function apiGet(url) {
-    const res = await fetch(url, { headers: apiHeaders(), cache: "no-store" });
+  async function apiGet(path) {
+    const res = await fetch(apiUrl(path), {
+      headers: apiHeaders(),
+      cache: "no-store",
+    });
+
     const data = await res.json().catch(() => ({}));
 
     if (res.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.replace("/index.html?logout=1");
+      // خلي auth.js يتصرف
+      if (typeof window.doLogout === "function") window.doLogout();
       return null;
     }
 
@@ -51,18 +85,17 @@
     return data;
   }
 
-  async function apiPost(url, body) {
-    const res = await fetch(url, {
+  async function apiPost(path, body) {
+    const res = await fetch(apiUrl(path), {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify(body || {}),
     });
+
     const data = await res.json().catch(() => ({}));
 
     if (res.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.replace("/index.html?logout=1");
+      if (typeof window.doLogout === "function") window.doLogout();
       return null;
     }
 
@@ -73,8 +106,6 @@
   }
 
   function renderBroken(rows) {
-    if (!els.brokenBody) return;
-
     if (!rows.length) {
       els.brokenBody.innerHTML = `
         <tr>
@@ -88,6 +119,7 @@
     }
 
     els.brokenBody.innerHTML = "";
+
     rows.forEach((r) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -119,17 +151,16 @@
       setBrokenStatus("Loading broken list…", "info");
       const data = await apiGet("/api/activation/broken");
       if (!data) return;
+
       renderBroken(Array.isArray(data.data) ? data.data : []);
     } catch (e) {
       console.error(e);
       setBrokenStatus(`Failed: ${e.message}`, "error");
-      if (els.brokenBody) {
-        els.brokenBody.innerHTML = `
-          <tr><td colspan="10" style="padding:12px; color:#dc2626;">
-            Failed to load broken pieces.
-          </td></tr>
-        `;
-      }
+      els.brokenBody.innerHTML = `
+        <tr><td colspan="10" style="padding:12px; color:#dc2626;">
+          Failed to load broken pieces.
+        </td></tr>
+      `;
     }
   }
 
@@ -154,7 +185,6 @@
         "success"
       );
 
-      // reload list
       loadBroken();
     } catch (e2) {
       console.error(e2);
@@ -165,9 +195,6 @@
   }
 
   function init() {
-    if (!user || !token) return;
-    if (!els.brokenBody) return; // الصفحة ممكن ما فيها section
-
     els.brokenBody.addEventListener("click", handleReplaceClick);
     loadBroken();
   }

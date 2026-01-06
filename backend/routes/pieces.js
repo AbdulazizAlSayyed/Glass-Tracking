@@ -1,3 +1,4 @@
+// routes/pieces.js
 const router = require("express").Router();
 const pool = require("../db");
 
@@ -21,8 +22,58 @@ function getStationId(req) {
   return req.user?.stationId ?? req.user?.station_id ?? null;
 }
 
+function buildRouteForGlassType(glassType) {
+  const type = norm(glassType).toLowerCase();
+
+  const hasDouble =
+    type.includes("a/s") || type.includes("air") || type.includes("double");
+
+  const hasLaminated =
+    type.includes("laminated") ||
+    type.includes("lam") ||
+    type.includes("tcl") ||
+    type.includes("6.6.4");
+
+  const steps = ["Cutting"];
+
+  if (hasLaminated) {
+    steps.push("Machine Edging", "Lamination", "Autoclave");
+  }
+
+  if (hasDouble) {
+    steps.push("Double Glazing");
+  }
+
+  steps.push("Delivery");
+  return steps;
+}
+
+async function findStationByName(conn, name) {
+  const [rows] = await conn.execute(
+    `SELECT id, name, stage_order FROM stations WHERE is_active=1 AND name = ? LIMIT 1`,
+    [name]
+  );
+  return rows[0] || null;
+}
+
+// fallback: next by stage_order
+async function findNextByStageOrder(conn, currentStationId) {
+  const [cs] = await conn.execute(
+    `SELECT id, stage_order, name FROM stations WHERE id = ? LIMIT 1`,
+    [currentStationId]
+  );
+  if (!cs.length) return null;
+
+  const currentStation = cs[0];
+  const [ns] = await conn.execute(
+    `SELECT id, name, stage_order FROM stations WHERE is_active=1 AND stage_order = ? LIMIT 1`,
+    [Number(currentStation.stage_order) + 1]
+  );
+  return ns[0] || null;
+}
+
 // =========================
-// Scan Next (DONE / PASS)
+// Scan Next (Route-based)
 // =========================
 router.post("/scan-next", async (req, res, next) => {
   let conn;
@@ -49,12 +100,18 @@ router.post("/scan-next", async (req, res, next) => {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
-    // piece_number هو الكود الحقيقي بالـ DB
+    // fetch piece + line glass_type
     const [rows] = await conn.execute(
       `
-      SELECT id AS piece_id, piece_number, current_station_id, status
-      FROM glass_pieces
-      WHERE piece_number = ?
+      SELECT 
+        gp.id AS piece_id,
+        gp.piece_number,
+        gp.current_station_id,
+        gp.status,
+        ol.glass_type
+      FROM glass_pieces gp
+      LEFT JOIN order_lines ol ON ol.id = gp.line_id
+      WHERE gp.piece_number = ?
       LIMIT 1
       `,
       [pieceCode]
@@ -84,7 +141,6 @@ router.post("/scan-next", async (req, res, next) => {
       }
     }
 
-    // جيب stage_order للمحطة الحالية
     const [cs] = await conn.execute(
       `SELECT id, stage_order, name FROM stations WHERE id = ? LIMIT 1`,
       [piece.current_station_id]
@@ -95,19 +151,37 @@ router.post("/scan-next", async (req, res, next) => {
         .status(400)
         .json({ ok: false, error: "Invalid current station" });
     }
-
     const currentStation = cs[0];
 
-    // المحطة التالية
-    const [ns] = await conn.execute(
-      `SELECT id, name FROM stations WHERE is_active=1 AND stage_order = ? LIMIT 1`,
-      [Number(currentStation.stage_order) + 1]
-    );
+    // build route from glass_type
+    const routeSteps = buildRouteForGlassType(piece.glass_type) || [];
+    let nextStation = null;
 
-    if (ns.length) {
-      const nextStation = ns[0];
+    if (routeSteps.length) {
+      // find index of current station name in route
+      const idx = routeSteps.findIndex(
+        (x) =>
+          String(x).toLowerCase() === String(currentStation.name).toLowerCase()
+      );
 
-      // move to next station
+      if (idx >= 0 && idx < routeSteps.length - 1) {
+        const nextName = routeSteps[idx + 1];
+        nextStation = await findStationByName(conn, nextName);
+      } else if (idx === routeSteps.length - 1) {
+        nextStation = null; // already at last step
+      } else {
+        // current station not found in route => fallback
+        nextStation = await findNextByStageOrder(
+          conn,
+          piece.current_station_id
+        );
+      }
+    } else {
+      // no route => fallback
+      nextStation = await findNextByStageOrder(conn, piece.current_station_id);
+    }
+
+    if (nextStation) {
       await conn.execute(
         `
         UPDATE glass_pieces
@@ -120,7 +194,6 @@ router.post("/scan-next", async (req, res, next) => {
         [nextStation.id, userId, piece.piece_id]
       );
 
-      // log event
       await conn.execute(
         `
         INSERT INTO piece_events (piece_id, event_type, station_id, user_id, notes)
@@ -131,7 +204,6 @@ router.post("/scan-next", async (req, res, next) => {
 
       await conn.commit();
 
-      // return updated
       const [updated] = await pool.execute(
         `
         SELECT gp.piece_number AS piece_code,
@@ -149,9 +221,10 @@ router.post("/scan-next", async (req, res, next) => {
         ok: true,
         message: "Scan next OK",
         piece: updated[0] || null,
+        route: routeSteps,
       });
     } else {
-      // last station => completed
+      // no next station => completed
       await conn.execute(
         `
         UPDATE glass_pieces
@@ -191,6 +264,7 @@ router.post("/scan-next", async (req, res, next) => {
         ok: true,
         message: "Scan next OK (completed)",
         piece: updated[0] || null,
+        route: routeSteps,
       });
     }
   } catch (e) {
@@ -202,7 +276,7 @@ router.post("/scan-next", async (req, res, next) => {
 });
 
 // =========================
-// Broken
+// Broken (كما هو)
 // =========================
 router.post("/broken", async (req, res, next) => {
   let conn;
@@ -310,7 +384,7 @@ router.post("/broken", async (req, res, next) => {
 });
 
 // =========================
-// History
+// History (كما هو)
 // =========================
 router.get("/:pieceCode/history", async (req, res, next) => {
   try {

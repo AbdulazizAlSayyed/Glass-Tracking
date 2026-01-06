@@ -4,12 +4,12 @@ const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
 
+// routes
 const authRoutes = require("./routes/auth");
 const piecesRoutes = require("./routes/pieces");
 const stationsRoutes = require("./routes/stations");
-const ordersRoutes = require("./routes/orders");
+const ordersRoutes = require("./routes/orders"); // ✅ يبقى لائحة/تفاصيل/تغيير حالة/حذف...
 const intakeRoutes = require("./routes/intake");
-const { authRequired } = require("./middleware/auth");
 const managerRoutes = require("./routes/manager");
 const activationRoutes = require("./routes/activation");
 const liveTrackingRoutes = require("./routes/liveTrackingRoutes");
@@ -17,7 +17,10 @@ const reportsRoutes = require("./routes/reportsRoutes");
 const deliveryRoutes = require("./routes/delivery");
 const usersRoutes = require("./routes/users");
 const workflowRoutes = require("./routes/workflowRoutes");
-// ... middlewares زي json, cors, الخ
+
+const ordersImportRoutes = require("./routes/ordersImport"); // ✅ import only
+
+const { authRequired } = require("./middleware/auth");
 
 const app = express();
 
@@ -39,7 +42,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// Frontend
+// Frontend static
 const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
 app.use(express.static(FRONTEND_DIR));
 
@@ -50,22 +53,32 @@ app.get("/api/health", (req, res) => {
     ok: true,
     message: "Glass Tracking API is running",
     timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || "undefined",
   });
 });
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/orders", authRequired, ordersRoutes);
+
 app.use("/api/intake", authRequired, intakeRoutes);
+
 app.use("/api/pieces", authRequired, piecesRoutes);
 app.use("/api/stations", authRequired, stationsRoutes);
+
+// ✅ orders normal endpoints
+app.use("/api/orders", authRequired, ordersRoutes);
+
+// ✅ import endpoints separated to avoid conflicts
+app.use("/api/orders", authRequired, ordersImportRoutes);
+
 app.use("/api/manager", authRequired, managerRoutes);
 app.use("/api/activation", authRequired, activationRoutes);
-app.use("/api/live-tracking", liveTrackingRoutes);
-app.use("/api/reports", reportsRoutes);
-app.use("/api/delivery", deliveryRoutes);
-app.use("/api/users", usersRoutes);
-app.use("/api/workflow", workflowRoutes);
+
+app.use("/api/live-tracking", authRequired, liveTrackingRoutes);
+app.use("/api/reports", authRequired, reportsRoutes);
+app.use("/api/delivery", authRequired, deliveryRoutes);
+app.use("/api/users", authRequired, usersRoutes);
+app.use("/api/workflow", authRequired, workflowRoutes);
 
 // frontend pages fallback
 app.get("/:file", (req, res, next) => {
@@ -76,6 +89,7 @@ app.get("/:file", (req, res, next) => {
     "station.html",
     "activation.html",
     "manager.html",
+    "intake-order.html",
   ];
   if (!allowedPages.includes(req.params.file)) return next();
 
@@ -92,12 +106,17 @@ app.use((req, res) =>
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
   const status = err.status || 500;
+
   const message =
     process.env.NODE_ENV === "development"
       ? err.message
       : "Internal server error";
 
-  res.status(status).json({ ok: false, error: message });
+  res.status(status).json({
+    ok: false,
+    error: message,
+    ...(process.env.NODE_ENV === "development" ? { stack: err.stack } : {}),
+  });
 });
 
 const PORT = process.env.PORT || 4000;

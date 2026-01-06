@@ -122,6 +122,52 @@ let queue = []; // rows from backend
 function norm(s) {
   return (s || "").trim().toLowerCase();
 }
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// glass_type عادة فيه كل الوصف.. بدنا نفصل
+function parseGlassInfo(text) {
+  const raw = (text || "").toString().trim();
+
+  // extract numbers before "MM"
+  const nums = [];
+  raw.replace(/(\d+(?:\.\d+)?)\s*MM/gi, (_, n) => {
+    nums.push(parseFloat(n));
+    return _;
+  });
+
+  // heuristic: panes = first & last, spacer = middle (if exists)
+  let paneA = nums.length ? nums[0] : null;
+  let paneB = nums.length >= 2 ? nums[nums.length - 1] : null;
+  let spacer = nums.length >= 3 ? nums[1] : null;
+
+  // glass/coating heuristic
+  const up = raw.toUpperCase();
+  let glassType = "—";
+  if (up.includes("N70")) glassType = "N70";
+  else if (up.includes("LOW E") || up.includes("LOW-E") || up.includes("LOWE"))
+    glassType = "Low-E";
+  else if (up.includes("REFLECT")) glassType = "Reflective";
+  else if (up.includes("WHITE")) glassType = "White";
+  else if (up.includes("CLEAR")) glassType = "Clear";
+
+  const thickness =
+    paneA && paneB ? `${paneA} / ${paneB} mm` : paneA ? `${paneA} mm` : "—";
+  const spacerTxt = spacer ? `${spacer} mm` : "—";
+
+  return {
+    glassType, // White / LowE / N70...
+    thickness, // 5.5 / 8 mm
+    spacer: spacerTxt, // 14 mm
+    description: raw || "—",
+  };
+}
 
 function mapStatusToUi(piece_status) {
   if (piece_status === "completed") return "completed";
@@ -162,6 +208,29 @@ async function loadQueue() {
 // =========================
 const ordersBody = document.getElementById("ordersBody");
 const orderSearchInput = document.getElementById("orderSearchInput");
+const customerFilter = document.getElementById("customerFilter");
+const dueFilter = document.getElementById("dueFilter");
+const pendingFilter = document.getElementById("pendingFilter");
+const sortFilter = document.getElementById("sortFilter");
+const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function dueBucket(dueStr) {
+  if (!dueStr || dueStr === "—") return "none";
+  const due = startOfDay(new Date(dueStr));
+  const today = startOfDay(new Date());
+  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
+  return { due, diffDays };
+}
+
+function dateOnly(s) {
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 function buildOrdersSummary() {
   const map = new Map();
@@ -183,14 +252,51 @@ function buildOrdersSummary() {
   }
   return Array.from(map.values());
 }
-
 function renderOrdersList() {
   if (!ordersBody) return;
 
   const q = norm(orderSearchInput?.value);
-  const orders = buildOrdersSummary().filter((o) =>
-    norm(o.orderNo).includes(q)
-  );
+  const custQ = norm(customerFilter?.value);
+
+  const dueMode = dueFilter?.value || "all";
+  const pendMode = pendingFilter?.value || "all";
+  const sortMode = sortFilter?.value || "due_asc";
+
+  let orders = buildOrdersSummary().filter((o) => {
+    // search by order #
+    if (q && !norm(o.orderNo).includes(q)) return false;
+
+    // customer
+    if (custQ && !norm(o.customer).includes(custQ)) return false;
+
+    // pending filter
+    if (pendMode === "has" && !(o.pending > 0)) return false;
+    if (pendMode === "none" && !(o.pending === 0)) return false;
+
+    // due filter
+    const b = dueBucket(o.due);
+    if (dueMode === "overdue" && !(b.diffDays < 0)) return false;
+    if (dueMode === "today" && !(b.diffDays === 0)) return false;
+    if (dueMode === "next7" && !(b.diffDays >= 0 && b.diffDays <= 7))
+      return false;
+    if (dueMode === "next30" && !(b.diffDays >= 0 && b.diffDays <= 30))
+      return false;
+
+    return true;
+  });
+
+  // sort
+  orders.sort((a, b) => {
+    const da = dueBucket(a.due).diffDays ?? 999999;
+    const db = dueBucket(b.due).diffDays ?? 999999;
+
+    if (sortMode === "due_asc") return da - db;
+    if (sortMode === "due_desc") return db - da;
+    if (sortMode === "pending_desc") return b.pending - a.pending;
+    if (sortMode === "order_asc")
+      return String(a.orderNo).localeCompare(String(b.orderNo));
+    return 0;
+  });
 
   const rows = orders
     .map(
@@ -206,9 +312,9 @@ function renderOrdersList() {
       </td>
       <td>${o.due}</td>
       <td>
-        <button class="link-btn" data-open-order="${o.orderNo}" type="button">
-          Open
-        </button>
+        <button class="link-btn" data-open-order="${
+          o.orderNo
+        }" type="button">Open</button>
       </td>
     </tr>
   `
@@ -221,6 +327,18 @@ function renderOrdersList() {
 }
 
 orderSearchInput?.addEventListener("input", renderOrdersList);
+customerFilter?.addEventListener("input", renderOrdersList);
+dueFilter?.addEventListener("change", renderOrdersList);
+pendingFilter?.addEventListener("change", renderOrdersList);
+sortFilter?.addEventListener("change", renderOrdersList);
+
+resetFiltersBtn?.addEventListener("click", () => {
+  if (customerFilter) customerFilter.value = "";
+  if (dueFilter) dueFilter.value = "all";
+  if (pendingFilter) pendingFilter.value = "all";
+  if (sortFilter) sortFilter.value = "due_asc";
+  renderOrdersList();
+});
 
 // =========================
 // Order Modal
@@ -293,36 +411,33 @@ function renderOrderPieces() {
       .map((p) => {
         const uiStatus = mapStatusToUi(p.piece_status);
         const disabled = uiStatus !== "waiting" ? "disabled" : "";
+        const info = parseGlassInfo(p.glass_type);
+
         return `
-        <tr>
-          <td><strong>${p.piece_code}</strong></td>
-          <td>${p.line_code || "—"}</td>
-          <td>${p.size || "—"}</td>
-          <td>${p.glass_type || "—"}</td>
-          <td>
-            <span class="status-pill ${pillClass(uiStatus)}">
-              ${pillLabel(uiStatus)}
-            </span>
-          </td>
-          <td>
-            <button class="btn btn-primary btn-small"
-                    data-piece-done="${p.piece_code}"
-                    type="button" ${disabled}>
-              Done
-            </button>
-          </td>
-          <td>
-            <button class="btn btn-ghost btn-small"
-                    data-piece-broken="${p.piece_code}"
-                    type="button" ${disabled}>
-              Broken
-            </button>
-          </td>
-        </tr>
-      `;
+<tr>
+  <td><strong>${p.piece_code}</strong></td>
+  <td>${p.line_code || "—"}</td>
+  <td>${p.size || "—"}</td>
+
+  <td>${info.thickness}</td>
+  <td>${info.glassType}</td>
+  <td class="desc-col">${info.description}</td>
+
+  <td>
+    <span class="status-pill ${pillClass(uiStatus)}">${pillLabel(
+          uiStatus
+        )}</span>
+  </td>
+  <td>
+    <button class="btn btn-primary btn-small"
+            data-piece-done="${p.piece_code}"
+            type="button" ${disabled}>Done</button>
+  </td>
+</tr>
+`;
       })
       .join("") ||
-    `<tr><td colspan="7" style="color:#6b7280; font-size:0.85rem;">No pieces match your filter.</td></tr>`;
+    `<tr><td colspan="9" style="color:#6b7280; font-size:0.85rem;">No pieces match your filter.</td></tr>`;
 
   if (paginationLabel) {
     if (total === 0) paginationLabel.textContent = "Showing 0 of 0";
@@ -428,7 +543,9 @@ function renderPieceDetailsFromQueueRow(p) {
     }`;
 
   if (pieceSize) pieceSize.textContent = p.size || "—";
-  if (pieceType) pieceType.textContent = p.glass_type || "—";
+  const gi = parseGlassInfo(p.glass_type);
+  if (pieceType) pieceType.textContent = `${gi.glassType} • ${gi.thickness}`;
+
   if (pieceStage)
     pieceStage.textContent = p.station_name || user?.stationName || "—";
   if (pieceNotes) pieceNotes.textContent = p.line_notes || "—";
